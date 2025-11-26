@@ -49,7 +49,7 @@ This extension contributes the following settings:
 # Define a schema
 !def User id name email
 
-# Data rows (58% fewer tokens than JSON!)
+# Data rows (44-54% fewer tokens than JSON!)
 1 Alice alice@example.com
 2 Bob bob@example.com
 3 Carol carol@example.com

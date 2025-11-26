@@ -1,6 +1,6 @@
 # Tauq for JavaScript/TypeScript
 
-**58% fewer tokens than JSON. Verified with tiktoken.**
+**44% fewer tokens than JSON overall. 54% fewer for flat data. Verified with tiktoken.**
 
 Tauq (τq) is a token-efficient data notation built for the AI era. This package provides WebAssembly bindings for Node.js and browsers.
 
@@ -106,12 +106,13 @@ const data = parse('key value');
 
 ## Why Tauq?
 
-| Format | 1000 Records | Tokens |
-|--------|--------------|--------|
-| JSON | 87 KB | 24,005 |
-| **Tauq** | **43 KB** | **10,011** |
+| Format | 1000 Records | Tokens | vs JSON |
+|--------|--------------|--------|---------|
+| JSON (minified) | 87 KB | 24,005 | baseline |
+| TOON | 45 KB | 12,002 | -50.0% |
+| **Tauq** | **43 KB** | **11,012** | **-54.1%** |
 
-58% fewer tokens = 58% lower API costs for LLM applications.
+44-54% fewer tokens = 44-54% lower API costs for LLM applications.
 
 ## License
 

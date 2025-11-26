@@ -90,10 +90,12 @@ tauq --minify examples/5_real_world/k8s_deployment.tqn
 | Format | 1000 Records | Tokens | vs JSON |
 |--------|--------------|--------|---------|
 | JSON (minified) | 87 KB | 24,005 | baseline |
-| TOON | 45 KB | 13,765 | -43% |
-| **Tauq** | **43 KB** | **10,011** | **-58%** |
+| TOON | 45 KB | 12,002 | -50.0% |
+| **Tauq** | **43 KB** | **11,012** | **-54.1%** |
 
 *All counts verified with tiktoken cl100k_base (GPT-4/Claude tokenizer).*
+
+**Overall (10 datasets, 55,647 tokens):** Tauq saves 44.2% vs JSON, 10.8% vs TOON.
 
 Tauq achieves these savings by:
 1. Eliminating repeated keys via schemas (`!def`)
