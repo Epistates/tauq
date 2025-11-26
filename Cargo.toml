@@ -6,7 +6,7 @@ authors = ["Tauq Contributors"]
 license = "MIT"
 description = "Token-efficient data notation - 44% fewer tokens than JSON (verified with tiktoken)"
 repository = "https://github.com/epistates/tauq"
-homepage = "https://tauq.org"
+homepage = "https://www.tauq.org"
 documentation = "https://docs.rs/tauq"
 readme = "README.md"
 keywords = ["serialization", "parser", "llm", "token-efficient", "data-format"]
@@ -14,11 +14,10 @@ categories = ["encoding", "parser-implementations", "command-line-utilities"]
 include = [
     "src/**/*",
     "tests/**/*",
-    "include/**/*",
+    "include/tauq.h",
     "Cargo.toml",
     "Cargo.lock",
-    "README.md",
-    "LICENSE"
+    "README.md"
 ]
 
 [lib]
