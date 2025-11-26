@@ -1,0 +1,145 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Create GitHub Release
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Tauq ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+
+  # Build and upload release binaries
+  build-release:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-action@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Build release
+      run: cargo build --release --target ${{ matrix.target }}
+
+    - name: Package (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        mkdir -p dist
+        cp target/${{ matrix.target }}/release/tauq dist/
+        cp target/${{ matrix.target }}/release/tauq-lsp dist/
+        cp README.md LICENSE dist/ 2>/dev/null || true
+        cd dist && tar -czvf ../tauq-${{ github.ref_name }}-${{ matrix.target }}.tar.gz *
+
+    - name: Package (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        mkdir dist
+        copy target\${{ matrix.target }}\release\tauq.exe dist\
+        copy target\${{ matrix.target }}\release\tauq-lsp.exe dist\
+        copy README.md dist\ 2>nul || echo.
+        cd dist && 7z a -tzip ..\tauq-${{ github.ref_name }}-${{ matrix.target }}.zip *
+
+    - name: Upload Release Asset (Unix)
+      if: matrix.os != 'windows-latest'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./tauq-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
+        asset_name: tauq-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload Release Asset (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./tauq-${{ github.ref_name }}-${{ matrix.target }}.zip
+        asset_name: tauq-${{ github.ref_name }}-${{ matrix.target }}.zip
+        asset_content_type: application/zip
+
+  # Publish to crates.io
+  publish-crate:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: build-release
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-action@stable
+
+    - name: Publish to crates.io
+      run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+
+  # Build and publish WASM to npm
+  publish-npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    needs: build-release
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-action@stable
+      with:
+        targets: wasm32-unknown-unknown
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Install wasm-pack
+      run: cargo install wasm-pack
+
+    - name: Build WASM
+      working-directory: bindings/js
+      run: wasm-pack build --target nodejs
+
+    - name: Publish to npm
+      working-directory: bindings/js/pkg
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

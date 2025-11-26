@@ -1,0 +1,26 @@
+target
+.strategy/
+website/
+
+# OS files
+.DS_Store
+*.swp
+*~
+
+# Environment
+.env
+
+# Temporary files
+*.tmp
+*.bak
+*.old
+
+# Benchmark outputs (keep structure, ignore data)
+benchmarks/outputs/*.json
+benchmarks/outputs/*.tqn
+benchmarks/outputs/*.toon
+
+# Editor directories
+.vscode/
+.idea/
+*.code-workspace
