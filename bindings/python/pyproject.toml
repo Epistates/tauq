@@ -1,0 +1,19 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "tauq"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+description = "Tauq parser for Python - JSON for the AI Era (70% fewer tokens)"
+readme = "README.md"
+version = "0.1.0"
+
+[tool.maturin]
+features = ["python-bindings"]
+module-name = "tauq"

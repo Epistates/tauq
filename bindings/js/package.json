@@ -1,0 +1,41 @@
+{
+  "name": "tauq",
+  "version": "0.1.0",
+  "description": "Tauq (τq): Token-efficient data notation - 58% fewer tokens than JSON",
+  "main": "pkg/tauq.js",
+  "types": "pkg/tauq.d.ts",
+  "files": [
+    "pkg"
+  ],
+  "scripts": {
+    "build": "wasm-pack build --target nodejs",
+    "build:web": "wasm-pack build --target web",
+    "build:bundler": "wasm-pack build --target bundler",
+    "test": "node test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "tauq",
+    "json",
+    "parser",
+    "ai",
+    "token-efficient",
+    "llm",
+    "data-format",
+    "wasm"
+  ],
+  "author": "Tauq Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/epistates/tauq"
+  },
+  "homepage": "https://github.com/epistates/tauq#readme",
+  "bugs": {
+    "url": "https://github.com/epistates/tauq/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {}
+}
