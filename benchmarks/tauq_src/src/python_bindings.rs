@@ -288,7 +288,7 @@ fn tauq(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add(
         "__doc__",
-        "Tauq parser for Python - JSON for the AI Era (70% fewer tokens)",
+        "Tauq parser for Python - JSON for the AI Era (44% fewer tokens than JSON)",
     )?;
 
     Ok(())

@@ -1,7 +1,7 @@
 // tauq - Token-Efficient Data Notation
 //
 // Tauq (τq): Time constant meets charge density
-// - 58% fewer tokens than JSON (verified with tiktoken)
+// - 44-54% fewer tokens than JSON (verified with tiktoken)
 // - Line-by-line lexing, batch parsing
 // - Beautiful, minimal syntax
 //
@@ -614,8 +614,8 @@ EXAMPLES:
     tauq minify config.tqn -o config.min.tqn
 
 WHY TAUQ:
-    • 58% fewer tokens than JSON (verified with tiktoken)
-    • Token-optimized mode matches TOON efficiency
+    • 44-54% fewer tokens than JSON (verified with tiktoken)
+    • 11% more efficient than TOON overall
     • True streaming via StreamingParser iterator
     • Beautiful, minimal syntax
     • Schema-driven with !def / !use
@@ -628,5 +628,5 @@ Learn more: https://tauq.org
 
 fn print_version() {
     println!("tauq {}", env!("CARGO_PKG_VERSION"));
-    println!("Tauq (τq): Token-efficient data notation - 58% fewer tokens");
+    println!("Tauq (τq): Token-efficient data notation - 44-54% fewer tokens than JSON");
 }
