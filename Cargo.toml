@@ -11,15 +11,14 @@ documentation = "https://docs.rs/tauq"
 readme = "README.md"
 keywords = ["serialization", "parser", "llm", "token-efficient", "data-format"]
 categories = ["encoding", "parser-implementations", "command-line-utilities"]
-exclude = [
-    "benchmarks/",
-    "website/",
-    "docs/",
-    "examples/",
-    "editors/",
-    ".strategy/",
-    "*.md",
-    "!README.md"
+include = [
+    "src/**/*",
+    "tests/**/*",
+    "include/**/*",
+    "Cargo.toml",
+    "Cargo.lock",
+    "README.md",
+    "LICENSE"
 ]
 
 [lib]
