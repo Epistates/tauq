@@ -1,0 +1,14 @@
+[book]
+authors = ["The Tauq Team"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Tauq Documentation"
+
+[output.html]
+git-repository-url = "https://github.com/epistates/tauq"
+edit-url-template = "https://github.com/epistates/tauq/edit/master/docs/src/{path}"
+
+[output.html.fold]
+enable = true
+level = 0
