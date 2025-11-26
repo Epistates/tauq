@@ -2,7 +2,12 @@
 
 **44% fewer tokens than JSON overall. 11% more efficient than TOON. Verified with tiktoken.**
 
-[![Tests](https://img.shields.io/badge/tests-88_passing-brightgreen)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Crates.io](https://img.shields.io/crates/v/tauq?label=crates.io)](https://crates.io/crates/tauq)
+[![npm](https://img.shields.io/npm/v/tauq?label=npm)](https://www.npmjs.com/package/tauq)
+[![PyPI](https://img.shields.io/pypi/v/tauq?label=pypi)](https://pypi.org/project/tauq/)
+[![Downloads](https://img.shields.io/crates/d/tauq?label=downloads)](https://crates.io/crates/tauq)
+[![Tests](https://img.shields.io/badge/tests-88_passing-brightgreen)]()
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---
 
@@ -80,19 +85,35 @@ Built for the AI era where every token counts.
 
 ### Installation
 
+**CLI Tool:**
 ```bash
-# Install the tauq package
 cargo install tauq
 ```
 
 ### Language Bindings
 
-Tauq is available for your favorite languages:
+**Rust:**
+```toml
+[dependencies]
+tauq = "0.1"
+```
 
-- **Python**: `pip install tauq`
-- **JavaScript**: `npm install tauq`
-- **Go**: `go get github.com/epistates/tauq`
-- **Rust**: Add `tauq = "0.1"` to your `Cargo.toml`
+**Python:**
+```bash
+pip install tauq
+```
+
+**JavaScript/TypeScript:**
+```bash
+npm install tauq
+```
+
+**Go:**
+```bash
+go get github.com/epistates/tauq
+```
+
+Other languages: Java, C#, Swift - see [Language Bindings](bindings/README.md)
 
 ### Hello World
 
