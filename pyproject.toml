@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "tauq"
 version = "0.1.0"
-description = "Tauq parser for Python - Token-efficient data notation (70% fewer tokens)"
+description = "Tauq parser for Python - Token-efficient data notation (44% fewer tokens than JSON)"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [

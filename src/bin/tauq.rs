@@ -1,7 +1,7 @@
 // tauq - Token-Efficient Data Notation
 //
 // Tauq (τq): Time constant meets charge density
-// - 58% fewer tokens than JSON (verified with tiktoken)
+// - 44-54% fewer tokens than JSON (verified with tiktoken)
 // - Line-by-line lexing, batch parsing
 // - Beautiful, minimal syntax
 //
@@ -628,5 +628,5 @@ Learn more: https://tauq.org
 
 fn print_version() {
     println!("tauq {}", env!("CARGO_PKG_VERSION"));
-    println!("Tauq (τq): Token-efficient data notation - 58% fewer tokens");
+    println!("Tauq (τq): Token-efficient data notation - 44-54% fewer tokens than JSON");
 }

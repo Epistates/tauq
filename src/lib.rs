@@ -1,7 +1,7 @@
 // Tauq (τq) - Token-Efficient Data Notation
 //
 // Time constant meets charge density
-// 70% fewer tokens than JSON
+// 44% fewer tokens than JSON (54% for flat data)
 // Line-by-line parsing architecture
 // Beautiful, minimal syntax
 

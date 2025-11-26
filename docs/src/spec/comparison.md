@@ -8,7 +8,7 @@ Honest, benchmark-verified comparison of Tauq against major data serialization f
 
 | Feature | JSON | YAML | TOON | Tauq |
 |---------|------|------|------|------|
-| **Token Efficiency** | Baseline | ~15% better | ~43% better | **~58% better** |
+| **Token Efficiency** | Baseline | ~15% better | ~50% better (flat) | **~44-54% better** |
 | **Count Required** | No | No | Yes `[N]` | **No** |
 | **Schema Declaration** | None | None | `{fields}:` | **`!def Name fields`** |
 | **Delimiter** | `,` (1 token) | Indent | `,` (1 token) | **Space (0 tokens)** |
@@ -26,8 +26,8 @@ Test data: User records with `id`, `name`, `email`, `role`, `active` fields.
 |--------|------------|--------|---------|
 | JSON (pretty) | 123,265 | 42,005 | -75% |
 | JSON (minified) | 87,264 | **24,005** | baseline |
-| TOON | 45,297 | 13,765 | **-43%** |
-| **Tauq** | 43,297 | **10,011** | **-58%** |
+| TOON | 45,297 | 12,002 | **-50.0%** |
+| **Tauq** | 43,297 | **11,012** | **-54.1%** |
 
 ### Why Tauq Wins on Token Count
 
@@ -86,10 +86,15 @@ users[2]{id,name,email}:
 | Nested objects | Indentation | Braces `{}` | Tie |
 | Schema reuse | Per-array | Global `!use` | Tauq (more flexible) |
 
-**Token counts (100 records):**
-- TOON: 1,386 tokens
-- Tauq: 1,008 tokens
-- **Tauq advantage: 27% fewer tokens**
+**Token counts (1000 records):**
+- TOON: 12,002 tokens
+- Tauq: 11,012 tokens
+- **Tauq advantage: 8.2% fewer tokens**
+
+**Overall (10 datasets, 55,647 tokens):**
+- TOON: 34,830 tokens
+- Tauq: 31,072 tokens
+- **Tauq advantage: 10.8% fewer tokens**
 
 ---
 

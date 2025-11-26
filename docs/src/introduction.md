@@ -16,28 +16,30 @@ JSON is verbose. In the age of Large Language Models (LLMs), verbosity equals co
 
 ## The Solution
 
-Tauq reduces token usage by **58%** (verified with tiktoken) for structured data by eliminating repetitive keys and syntax noise.
+Tauq reduces token usage by **44-54%** (verified with tiktoken) for structured data by eliminating repetitive keys and syntax noise.
 
 ```tqn
 !def User id name email role active
 1 Alice alice@example.com admin true
 2 Bob bob@example.com user true
 ```
-**~108 tokens** per 100 records.
+**~110 tokens** per 100 records.
 
 ## Benchmark Results
 
 | Format | 1000 Records | Tokens | vs JSON |
 |--------|--------------|--------|---------|
 | JSON (minified) | 87 KB | 24,005 | baseline |
-| TOON | 45 KB | 13,765 | -43% |
-| **Tauq** | **43 KB** | **10,011** | **-58%** |
+| TOON | 45 KB | 12,002 | -50.0% |
+| **Tauq** | **43 KB** | **11,012** | **-54.1%** |
 
 *All counts verified with tiktoken cl100k_base (GPT-4/Claude tokenizer).*
 
+**Overall (10 datasets, 55,647 tokens):** Tauq saves 44.2% vs JSON, 10.8% vs TOON.
+
 ## Key Features
 
-- **Token-Optimal:** 58% fewer tokens than JSON, 27% fewer than TOON.
+- **Token-Optimal:** 44-54% fewer tokens than JSON, 11% more efficient than TOON.
 - **Schema-Driven:** Define shapes with `!def` and switch with `!use`.
 - **True Streaming:** `StreamingParser` yields records one at a time. No count required.
 - **Programmable:** Use **Tauq Query (TQQ)** for data transformations.
