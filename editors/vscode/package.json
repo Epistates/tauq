@@ -1,0 +1,107 @@
+{
+  "name": "tauq-vscode",
+  "displayName": "Tauq",
+  "description": "Tauq (τq) language support - token-efficient data notation for the AI era",
+  "version": "0.1.0",
+  "publisher": "tauq",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/epistates/tauq"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters",
+    "Linters"
+  ],
+  "keywords": [
+    "tauq",
+    "tqn",
+    "tqq",
+    "data notation",
+    "token efficient",
+    "json alternative"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "tauq",
+        "aliases": ["Tauq", "tauq", "TQN", "TQQ"],
+        "extensions": [".tqn", ".tqq"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/tauq-light.png",
+          "dark": "./icons/tauq-dark.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "tauq",
+        "scopeName": "source.tauq",
+        "path": "./syntaxes/tauq.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Tauq",
+      "properties": {
+        "tauq.lsp.path": {
+          "type": "string",
+          "default": "tauq-lsp",
+          "description": "Path to the Tauq Language Server executable. Set to absolute path if not in PATH."
+        },
+        "tauq.lsp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable the Tauq Language Server."
+        },
+        "tauq.format.indentSize": {
+          "type": "number",
+          "default": 2,
+          "description": "Number of spaces for indentation when formatting."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "tauq.convertToJson",
+        "title": "Tauq: Convert to JSON"
+      },
+      {
+        "command": "tauq.convertFromJson",
+        "title": "Tauq: Convert from JSON"
+      },
+      {
+        "command": "tauq.minify",
+        "title": "Tauq: Minify"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.55.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

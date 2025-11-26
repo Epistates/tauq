@@ -1,0 +1,126 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Tauq",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#schema-block"
+    },
+    {
+      "include": "#run-block"
+    },
+    {
+      "include": "#generic-object"
+    },
+    {
+      "include": "#directives"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#variables"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.tauq",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "schema-block": {
+        "begin": "^\\s*(!schemas)\\b",
+        "beginCaptures": {
+            "1": { "name": "keyword.control.directive.tauq" }
+        },
+        "end": "^---$",
+        "endCaptures": {
+            "0": { "name": "keyword.control.directive.tauq" }
+        },
+        "patterns": [
+            { "include": "#comments" },
+            { "include": "#strings" },
+            { "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b", "name": "entity.name.type.tauq" }
+        ]
+    },
+    "run-block": {
+        "begin": "^\\s*(!run)\\s+([a-zA-Z0-9_]+)(?:\\s+(.*))?\\s*(\\{)",
+        "beginCaptures": {
+            "1": { "name": "keyword.control.directive.tauq" },
+            "2": { "name": "variable.parameter.language.tauq" },
+            "3": { "name": "string.unquoted.args.tauq" },
+            "4": { "name": "punctuation.section.block.begin.tauq" }
+        },
+        "end": "\\}",
+        "endCaptures": {
+            "0": { "name": "punctuation.section.block.end.tauq" }
+        },
+        "contentName": "source.embedded.tauq",
+        "patterns": [
+             { "include": "source.python" },
+             { "include": "source.js" },
+             { "include": "source.sh" }
+        ]
+    },
+    "generic-object": {
+        "begin": "\\{",
+        "beginCaptures": {
+            "0": { "name": "punctuation.definition.dictionary.begin.tauq" }
+        },
+        "end": "\\}",
+        "endCaptures": {
+            "0": { "name": "punctuation.definition.dictionary.end.tauq" }
+        },
+        "patterns": [
+            { "include": "$self" }
+        ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "name": "keyword.control.directive.tauq",
+          "match": "^\\s*!(def|use|emit|pipe|import|set|env|read|models)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.tauq",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.tauq",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.tauq",
+          "match": "\\b(true|false|null)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.tauq",
+      "match": "\\b\\d+(\\.\\d+)?\\b"
+    },
+    "variables": {
+        "name": "variable.other.tauq",
+        "match": "\\$[a-zA-Z_][a-zA-Z0-9_]*"
+    }
+  },
+  "scopeName": "source.tauq"
+}
