@@ -1,0 +1,44 @@
+# ============================================================================
+# Tauq Basics: Primitive Types
+# ============================================================================
+#
+# Tauq supports all standard JSON types with cleaner, space-separated syntax.
+# This file demonstrates every primitive type.
+
+# --- Strings ---
+# Barewords: unquoted strings (alphanumeric, underscore, hyphen, slash, dot)
+app_name    MyApp
+environment production
+region      us-east-1
+
+# Quoted strings: required for spaces or special characters
+description "A token-efficient data notation"
+greeting    "Hello, World!"
+sql_query   "SELECT * FROM users WHERE active = true"
+
+# --- Numbers ---
+# Integers
+count       42
+port        8080
+negative    -100
+
+# Floats
+pi          3.14159
+temperature -23.5
+rate        0.001
+
+# Scientific notation
+large       1e10
+small       2.5e-7
+
+# --- Booleans ---
+is_active   true
+is_legacy   false
+
+# --- Null ---
+deprecated  null
+optional    null
+
+# --- Comments ---
+# This is a full-line comment
+log_level info  # Inline comments work too

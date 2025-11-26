@@ -1,0 +1,66 @@
+# Real World: Kubernetes Deployment
+#
+# A complex Kubernetes-style manifest demonstrating deeply nested objects and lists.
+
+apiVersion apps/v1
+kind       Deployment
+metadata {
+    name      tauq-api
+    namespace production
+    labels {
+        app     tauq
+        service api
+    }
+}
+
+spec {
+    replicas 3
+    selector {
+        matchLabels {
+            app tauq
+        }
+    }
+    
+    template {
+        metadata {
+            labels {
+                app tauq
+            }
+        }
+        
+        spec {
+            containers [
+                {
+                    name  tauq-api
+                    image "tauq/api:v1.2.0"
+                    ports [ { containerPort 8080 } ]
+                    
+                    env [
+                        { name "RUST_LOG" value "info" }
+                        { name "DB_HOST"  value "postgres.default" }
+                    ]
+                    
+                    resources {
+                        limits {
+                            cpu    "500m"
+                            memory "512Mi"
+                        }
+                        requests {
+                            cpu    "100m"
+                            memory "128Mi"
+                        }
+                    }
+                    
+                    readinessProbe {
+                        httpGet {
+                            path "/health"
+                            port 8080
+                        }
+                        initialDelaySeconds 5
+                        periodSeconds       10
+                    }
+                }
+            ]
+        }
+    }
+}

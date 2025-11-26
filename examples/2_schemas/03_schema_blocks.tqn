@@ -1,0 +1,37 @@
+# ============================================================================
+# Tauq Schemas: Schema Blocks
+# ============================================================================
+#
+# Define multiple schemas upfront using !schemas ... ---
+# This is useful for large files with many types.
+#
+# Block definitions require explicit !use to activate.
+
+!schemas
+User id name email role
+Product sku name price category
+Order id user_id product_sku quantity total
+---
+
+# Now use each schema explicitly
+
+!use User
+1 "Alice"   "alice@shop.com"   admin
+2 "Bob"     "bob@shop.com"     customer
+3 "Carol"   "carol@shop.com"   customer
+
+!use Product
+"LAPTOP-01"  "MacBook Pro"    2499.00 electronics
+"PHONE-01"   "iPhone 15"      999.00  electronics
+"CHAIR-01"   "Office Chair"   299.00  furniture
+
+!use Order
+"ORD-001" 2 "LAPTOP-01" 1 2499.00
+"ORD-002" 3 "PHONE-01"  2 1998.00
+"ORD-003" 2 "CHAIR-01"  4 1196.00
+
+# --- Why Use Schema Blocks? ---
+# 1. All types visible at the top of the file
+# 2. Clear separation between schema definition and data
+# 3. Better for generated code and tooling
+# 4. Easier to maintain in large files

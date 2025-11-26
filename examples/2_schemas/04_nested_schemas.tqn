@@ -1,0 +1,59 @@
+# ============================================================================
+# Tauq Schemas: Nested Schema Usage
+# ============================================================================
+#
+# Use !def/---/!use pattern for schemas inside nested objects.
+# The --- separator clears implicit schema scope, allowing
+# structured data with !use inside arrays.
+
+# Define schemas at the top
+!def Item sku name price quantity
+!def Payment method last4 status
+
+---
+
+# Nested object structure with schema-driven arrays
+order {
+  id "ORD-2025-001"
+  customer {
+    name "Jane Doe"
+    email "jane@example.com"
+    address {
+      street "123 Main St"
+      city "San Francisco"
+      state CA
+      zip "94102"
+    }
+  }
+
+  # Use schema for items array (deeply nested)
+  items [
+    !use Item
+    "LAPTOP-001" "ThinkPad X1" 1299.99 1
+    "MOUSE-042" "Wireless Mouse" 29.99 2
+    "HDMI-CABLE" "HDMI Cable 6ft" 12.99 1
+  ]
+
+  totals {
+    subtotal 1372.96
+    tax 109.84
+    shipping 15.00
+    total 1497.80
+  }
+
+  # Another schema-driven array
+  payments [
+    !use Payment
+    credit_card "4242" paid
+  ]
+
+  status shipped
+  tracking "1Z999AA10123456784"
+}
+
+# --- Key Points ---
+# 1. !def at top defines schemas
+# 2. --- clears implicit scope (required before key-value data)
+# 3. !use inside arrays activates schema for that array
+# 4. Works at any nesting depth
+# 5. Multiple schemas can be used in same document

@@ -1,0 +1,42 @@
+# ============================================================================
+# Tauq Query (TQQ): Data Pipelines
+# ============================================================================
+#
+# Use !pipe to filter content through external commands.
+# Use !run to execute inline code blocks.
+
+# --- !pipe: Filter Through Command ---
+# Pipes ALL subsequent content through the command's stdin
+
+# Emit valid Tauq data (list items)
+!emit echo '- cherry'
+!emit echo '- apple'
+!emit echo '- banana'
+
+# Note: !pipe would filter ALL content through a command
+# This is powerful for transformations but use carefully
+
+# --- !run: Execute Code Block ---
+# Run inline code with an interpreter, output is inserted
+
+# Python example - outputs valid JSON (which Tauq can parse)
+!run python3 {
+import json
+data = {"team": [{"name": "Alice"}, {"name": "Bob"}, {"name": "Carol"}]}
+print(json.dumps(data))
+}
+
+# Shell example - outputs valid Tauq key-value pairs
+!run sh {
+echo "host \"$(hostname)\""
+echo "user \"$(whoami)\""
+}
+
+# --- Static Tauq Content ---
+# Non-directive lines pass through as-is
+
+scores {
+    alice 95
+    bob 87
+    carol 92
+}

@@ -1,0 +1,31 @@
+# ============================================================================
+# Real World: API Response (LLM-Optimized)
+# ============================================================================
+#
+# This example shows how Tauq can reduce token usage for API responses,
+# which is critical when sending structured data to/from LLMs.
+
+# Define response schema once
+!def User id name email role created_at
+
+# Send many records with minimal tokens
+1001 "Alice Johnson"  "alice@company.com"   admin   "2024-01-15T10:30:00Z"
+1002 "Bob Smith"      "bob@company.com"     user    "2024-02-20T14:45:00Z"
+1003 "Carol Davis"    "carol@company.com"   user    "2024-03-05T09:15:00Z"
+1004 "Dave Wilson"    "dave@company.com"    viewer  "2024-03-10T16:20:00Z"
+1005 "Eve Brown"      "eve@company.com"     user    "2024-03-15T11:00:00Z"
+
+# --- Token Comparison ---
+#
+# JSON equivalent (~450 tokens):
+# [
+#   {"id": 1001, "name": "Alice Johnson", "email": "alice@company.com", "role": "admin", "created_at": "2024-01-15T10:30:00Z"},
+#   {"id": 1002, "name": "Bob Smith", "email": "bob@company.com", "role": "user", "created_at": "2024-02-20T14:45:00Z"},
+#   ...
+# ]
+#
+# Tauq equivalent (~120 tokens): 73% savings!
+#
+# At scale (1000 records):
+# JSON: ~90,000 tokens | Tauq: ~25,000 tokens
+# Cost savings: $0.65/request at $0.01/1K tokens

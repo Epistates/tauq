@@ -1,0 +1,84 @@
+# ============================================================================
+# Tauq Basics: Objects and Arrays
+# ============================================================================
+#
+# Tauq uses braces {} for objects and brackets [] for arrays.
+# Elements are whitespace-separated (commas are optional noise).
+
+# --- Simple Arrays ---
+# Inline arrays are concise
+ids       [1 2 3 4 5]
+tags      [web api backend]
+mixed     [42 "hello" true null]
+
+# Multi-line arrays for readability
+regions [
+    us-east-1
+    us-west-2
+    eu-west-1
+    ap-south-1
+]
+
+# --- Simple Objects ---
+# Key-value pairs inside braces
+server {
+    host localhost
+    port 8080
+}
+
+# Nested objects
+database {
+    host     db.internal
+    port     5432
+    pool {
+        min  5
+        max  20
+        idle 10
+    }
+    credentials {
+        user     admin
+        password "s3cr3t!"
+    }
+}
+
+# --- Arrays of Objects ---
+users [
+    { name Alice  role admin }
+    { name Bob    role user  }
+    { name Carol  role user  }
+]
+
+# Multi-line for complex objects
+endpoints [
+    {
+        path    "/api/users"
+        method  GET
+        auth    true
+    }
+    {
+        path    "/api/health"
+        method  GET
+        auth    false
+    }
+]
+
+# --- Mixed Nesting ---
+# Combining objects, arrays, and primitives
+service {
+    name    api-gateway
+    version "2.1.0"
+    enabled true
+
+    ports [80 443 8080]
+
+    features {
+        caching  true
+        logging  true
+        metrics  false
+    }
+
+    upstreams [
+        { host "svc-a.internal" weight 10 }
+        { host "svc-b.internal" weight 5  }
+    ]
+}

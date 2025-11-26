@@ -1,0 +1,9 @@
+# Logging Module
+logging {
+    level  info
+    format json
+    destinations [
+        stdout
+        file://var/log/app.log
+    ]
+}

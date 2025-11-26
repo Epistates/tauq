@@ -1,0 +1,27 @@
+# ============================================================================
+# Tauq Minified: Compact Syntax
+# ============================================================================
+#
+# Semicolons (;) act as newlines, enabling single-line representations.
+# Ideal for streaming, log lines, or embedded configurations.
+
+# --- Schema + Data on One Line ---
+!def User id name role; 1 Alice admin; 2 Bob user; 3 Carol user
+
+# --- Mixed Multi-line and Inline ---
+!def Point x y
+10 20; 30 40; 50 60
+70 80
+90 100
+
+# --- Inline Objects ---
+config { name App; version "1.0"; debug false }
+
+# --- Inline Arrays ---
+servers [alpha beta gamma]; ports [80 443 8080]
+
+# --- When to Use Minified ---
+# 1. Streaming data (each line = one record)
+# 2. Embedding in other formats (shell scripts, logs)
+# 3. Maximum token efficiency for LLM context
+# 4. Network transmission (smaller payloads)

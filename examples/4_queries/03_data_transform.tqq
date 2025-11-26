@@ -1,0 +1,22 @@
+# ============================================================================
+# Tauq Query (TQQ): Data Transformation
+# ============================================================================
+#
+# Full example: Generate CSV, transform to JSON, then to Tauq.
+
+# Step 1: Generate CSV data
+!emit echo "id,name,role"
+!emit echo "101,Alice,Dev"
+!emit echo "102,Bob,Ops"
+!emit echo "103,Charlie,Design"
+
+# Step 2: Transform CSV -> JSON with Python
+!pipe python3 -c 'import sys, csv, json; print(json.dumps([dict(r) for r in csv.DictReader(sys.stdin)]))'
+
+# The output is now JSON, which can be:
+# 1. Parsed by Tauq directly
+# 2. Further transformed with additional !pipe commands
+# 3. Enriched with custom fields
+
+# --- Expected Output ---
+# [{"id": "101", "name": "Alice", "role": "Dev"}, ...]

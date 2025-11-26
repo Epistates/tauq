@@ -1,0 +1,46 @@
+# ============================================================================
+# Tauq Schemas: Basic Usage
+# ============================================================================
+#
+# Schemas are Tauq's superpower for tabular data. Define a shape once,
+# then emit rows without repeating keys. Saves 40-70% tokens vs JSON.
+#
+# Syntax: !def SchemaName field1 field2 field3
+
+# --- Define and Use ---
+# !def both DEFINES and ACTIVATES a schema (implicit !use)
+# Rows following !def are parsed using that schema's fields
+
+!def User id name email
+
+# These rows map to: {id: 1, name: "Alice", email: "alice@example.com"}, ...
+1 Alice "alice@example.com"
+2 Bob   "bob@example.com"
+3 Carol "carol@example.com"
+
+# --- Multiple Schemas ---
+# Define another schema - it becomes active immediately
+
+!def Product sku name price in_stock
+
+"SKU-001" "Widget"     29.99 true
+"SKU-002" "Gadget"     49.99 true
+"SKU-003" "Gizmo"      19.99 false
+
+# --- Explicit !use ---
+# Switch back to a previously defined schema with !use
+
+!use User
+4 Dave "dave@example.com"
+5 Eve  "eve@example.com"
+
+# --- Token Savings Example ---
+# JSON equivalent of the User rows above:
+# [
+#   {"id": 1, "name": "Alice", "email": "alice@example.com"},
+#   {"id": 2, "name": "Bob", "email": "bob@example.com"},
+#   {"id": 3, "name": "Carol", "email": "carol@example.com"},
+#   {"id": 4, "name": "Dave", "email": "dave@example.com"},
+#   {"id": 5, "name": "Eve", "email": "eve@example.com"}
+# ]
+# JSON: ~200 tokens | Tauq: ~60 tokens = 70% savings

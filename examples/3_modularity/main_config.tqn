@@ -1,0 +1,28 @@
+# ============================================================================
+# Tauq Modularity: Imports
+# ============================================================================
+#
+# Use !import to split configurations into reusable modules.
+# The imported file is processed and inserted in-place.
+#
+# Syntax: !import "path/to/file.tqn"
+
+name        "Enterprise Platform"
+version     "3.0.0"
+environment production
+
+# --- Import Modules ---
+# Each module is a separate .tqn file with its own concerns
+
+!import "modules/database.tqn"
+!import "modules/logging.tqn"
+
+# --- Benefits ---
+# 1. Separation of concerns
+# 2. Reusable configuration modules
+# 3. Smaller, focused files
+# 4. Team can own different modules
+# 5. Environment-specific overrides (import different modules)
+
+# Note: Run from the 3_modularity directory:
+#   cd examples/3_modularity && tauq main_config.tqn

@@ -1,0 +1,47 @@
+# ============================================================================
+# Tauq Schemas: Typed Fields & Nesting
+# ============================================================================
+#
+# Fields can reference other schemas for nested data.
+# Syntax: field:SchemaName for objects, field:[SchemaName] for lists
+
+# --- Basic Schema (no type annotations) ---
+# Type annotations are documentation hints; Tauq infers types from values
+
+!def Employee id name department salary active
+
+1001 "Alice Johnson" Engineering 95000.00 true
+1002 "Bob Smith"     Marketing   75000.00 true
+1003 "Carol White"   Engineering 105000.00 false
+
+# --- Nested Object Types ---
+# Reference another schema with :SchemaName
+# Nested values use braces {}
+
+!def Address street city zip
+!def Contact name email phone address:Address
+
+"Alice" "alice@corp.com" "555-0101" { "123 Main St" "New York" "10001" }
+"Bob"   "bob@corp.com"   "555-0102" { "456 Oak Ave" "Boston"   "02101" }
+
+# --- List Types ---
+# Use :[SchemaName] for lists of objects
+
+!def Tag name color
+!def Article title author tags:[Tag]
+
+"Getting Started with Tauq" "Alice" [
+    { "tutorial" "blue"  }
+    { "beginner" "green" }
+]
+
+"Advanced Schemas" "Bob" [
+    { "advanced" "red"    }
+    { "schemas"  "purple" }
+]
+
+# --- Why Type Annotations? ---
+# 1. Documentation for developers
+# 2. Schema registry/tooling integration
+# 3. Editor autocomplete hints
+# 4. Future: validation and code generation

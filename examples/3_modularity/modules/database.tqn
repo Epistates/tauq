@@ -1,0 +1,13 @@
+# Database Module
+database {
+    driver   postgres
+    host     db-cluster.internal
+    port     5432
+    replicas 3
+    
+    # Connection pool settings
+    pool {
+        min_idle 5
+        max_open 20
+    }
+}
