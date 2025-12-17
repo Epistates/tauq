@@ -6,31 +6,42 @@
 [![npm](https://img.shields.io/npm/v/tauq?label=npm)](https://www.npmjs.com/package/tauq)
 [![PyPI](https://img.shields.io/pypi/v/tauq?label=pypi)](https://pypi.org/project/tauq/)
 [![Downloads](https://img.shields.io/crates/d/tauq?label=downloads)](https://crates.io/crates/tauq)
-[![Tests](https://img.shields.io/badge/tests-88_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-74_passing-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---
 
 ## What is Tauq?
 
-**Tauq** (τq) is two things:
+**Tauq** (τq) is three things:
 
-1.  **Tauq Notation (`.tqn`)**: A schema-driven data format that achieves 44-54% fewer tokens than JSON (verified with tiktoken cl100k_base).
-2.  **Tauq Query (`.tqq`)**: A pre-processor with shell integration for data transformations.
+1.  **Tauq Notation (`.tqn`)**: A schema-driven text format that achieves 44-54% fewer tokens than JSON (verified with tiktoken cl100k_base).
+2.  **Tauq Binary Format (TBF)**: A high-performance binary format achieving 84% size reduction vs JSON with schema-aware columnar encoding.
+3.  **Tauq Query (`.tqq`)**: A pre-processor with shell integration for data transformations.
 
 Built for the AI era where every token counts.
 
 ---
 
-## Benchmark (1000 Records)
+## Benchmarks
+
+### Token Efficiency (1000 Records)
 
 | Format | Tokens | vs JSON |
 |--------|--------|---------|
 | JSON (minified) | 24,005 | baseline |
 | TOON | 12,002 | -50.0% |
-| **Tauq** | **11,012** | **-54.1%** |
+| **Tauq (TQN)** | **11,012** | **-54.1%** |
 
 *All counts verified with tiktoken cl100k_base (GPT-4/Claude tokenizer).*
+
+### Binary Size (1000 Records)
+
+| Format | Size | vs JSON |
+|--------|------|---------|
+| JSON (minified) | 87 KB | baseline |
+| Tauq (TQN) | 43 KB | -51% |
+| **Tauq (TBF)** | **14 KB** | **-84%** |
 
 **Overall (10 datasets, 55,647 tokens):** Tauq saves 44.2% vs JSON, 10.8% vs TOON. See `benchmarks/` for full results.
 
@@ -52,10 +63,17 @@ Built for the AI era where every token counts.
 
 ## Features
 
-### Token-Optimal
+### Token-Optimal (TQN)
 - 44-54% fewer tokens than JSON (verified benchmarks)
 - 11% more efficient than TOON overall
 - Space delimiters tokenize better than commas
+
+### Binary Format (TBF)
+- **Up to 84% smaller than JSON** (with schema-aware encoding)
+- Generic serde encoder: ~44-56% reduction (CLI default)
+- Schema-aware encoder: ~84% reduction (Rust API + type hints)
+- Adaptive integer and dictionary compression
+- **Apache Iceberg integration** for data lakes
 
 ### True Streaming
 - `StreamingParser` iterator API
@@ -66,13 +84,14 @@ Built for the AI era where every token counts.
 - Define data shapes with `!def`
 - Switch schemas with `!use`
 - Nested types and typed arrays
+- Type hints for binary encoding optimization
 
-### 🔧 **Programmable**
+### Programmable
 - Tauq Query for data transformations
 - Unix pipe model
 - Polyglot support (Python, Rhai, JavaScript)
 
-### 🛠️ **Production-Ready CLI**
+### Production-Ready CLI
 - `tauq build` - Parse to JSON
 - `tauq format` - JSON → Tauq
 - `tauq minify` - Compress to one line
@@ -280,6 +299,50 @@ tauq exec pipeline.tqq --safe
 ```bash
 # Compress to single line
 tauq minify data.tqn -o data.min.tqn
+```
+
+---
+
+## Binary Format (TBF)
+
+For high-performance scenarios where tokens don't matter but size and speed do:
+
+```rust
+use tauq::tbf::{TableSchemaBuilder, FieldEncoding, TableEncode};
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, TableEncode)]
+struct Employee {
+    #[tauq(encoding = "u16")]
+    id: u32,
+    name: String,
+    #[tauq(encoding = "u8", offset = 18)]  // Age 18-273 as 0-255
+    age: u32,
+}
+
+let employees = vec![/* ... */];
+let bytes = employees.encode_tbf();  // 84% smaller than JSON
+```
+
+### Apache Iceberg Integration
+
+Enable the `iceberg` feature for data lake integration:
+
+```toml
+[dependencies]
+tauq = { version = "0.1", features = ["iceberg"] }
+```
+
+```rust
+use tauq::tbf_iceberg::{TbfFileWriterBuilder, ArrowToTbf};
+
+// Write Arrow RecordBatches as TBF
+let mut writer = TbfFileWriterBuilder::new()
+    .with_iceberg_schema(&iceberg_schema)
+    .build();
+
+writer.write(&record_batch);
+let tbf_data = writer.finish();
 ```
 
 ---

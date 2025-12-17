@@ -14,7 +14,7 @@
 // let config: Config = tauq::from_str(tauq_source)?;
 // ```
 
-use crate::{compile_tauq, RhoError};
+use crate::{compile_tauq, TauqError};
 use serde::de::DeserializeOwned;
 use std::path::Path;
 
@@ -41,10 +41,10 @@ use std::path::Path;
 /// assert_eq!(config.workers, 8.0);
 /// assert_eq!(config.timeout, 30.0);
 /// ```
-pub fn from_str<T: DeserializeOwned>(s: &str) -> Result<T, RhoError> {
+pub fn from_str<T: DeserializeOwned>(s: &str) -> Result<T, TauqError> {
     let json = compile_tauq(s)?;
     serde_json::from_value(json).map_err(|e| {
-        RhoError::Interpret(crate::error::InterpretError::new(format!(
+        TauqError::Interpret(crate::error::InterpretError::new(format!(
             "Deserialization error: {}",
             e
         )))
@@ -76,12 +76,12 @@ pub fn from_str<T: DeserializeOwned>(s: &str) -> Result<T, RhoError> {
 ///
 /// let config: Config = from_file(Path::new("config.tqn")).unwrap();
 /// ```
-pub fn from_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, RhoError> {
+pub fn from_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, TauqError> {
     let source = std::fs::read_to_string(path.as_ref())
-        .map_err(|e| RhoError::Io(e))?;
+        .map_err(TauqError::Io)?;
     let json = compile_tauq(&source)?;
     serde_json::from_value(json).map_err(|e| {
-        RhoError::Interpret(crate::error::InterpretError::new(format!(
+        TauqError::Interpret(crate::error::InterpretError::new(format!(
             "Deserialization error: {}",
             e
         )))
@@ -105,9 +105,9 @@ pub fn from_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, RhoEr
 /// let data: Data = from_bytes(bytes).unwrap();
 /// assert_eq!(data.value, 42.0);
 /// ```
-pub fn from_bytes<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, RhoError> {
+pub fn from_bytes<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, TauqError> {
     let s = std::str::from_utf8(bytes).map_err(|e| {
-        RhoError::Interpret(crate::error::InterpretError::new(format!("Invalid UTF-8: {}", e)))
+        TauqError::Interpret(crate::error::InterpretError::new(format!("Invalid UTF-8: {}", e)))
     })?;
     from_str(s)
 }

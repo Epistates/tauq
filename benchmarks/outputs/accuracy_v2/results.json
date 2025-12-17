@@ -1,0 +1,32 @@
+{
+  "json": {
+    "format": "json",
+    "accuracy": 0,
+    "correct": 0,
+    "total": 0,
+    "errors": 10,
+    "tokens": 52978,
+    "avg_latency_ms": 0,
+    "accuracy_per_1k_tokens": 0.0
+  },
+  "tauq": {
+    "format": "tauq",
+    "accuracy": 1.0,
+    "correct": 6,
+    "total": 6,
+    "errors": 4,
+    "tokens": 19298,
+    "avg_latency_ms": 62871.86356385549,
+    "accuracy_per_1k_tokens": 0.05181884133070785
+  },
+  "tauq-no-schemas": {
+    "format": "tauq-no-schemas",
+    "accuracy": 0,
+    "correct": 0,
+    "total": 0,
+    "errors": 10,
+    "tokens": 30287,
+    "avg_latency_ms": 0,
+    "accuracy_per_1k_tokens": 0.0
+  }
+}

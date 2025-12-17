@@ -2,16 +2,20 @@ use super::token::{Location, SpannedToken, Token};
 use std::iter::Peekable;
 use std::str::Chars;
 
+/// Lexer for tokenizing Tauq source code
 pub struct Lexer<'a> {
     input: &'a str,
     chars: Peekable<Chars<'a>>,
-    // Position tracking
+    // Position tracking (using checked arithmetic for safety)
     offset: usize, // byte offset
     line: usize,   // 1-based line number
     column: usize, // 1-based column number
+    /// Flag indicating overflow occurred (lexer continues but positions may be inaccurate)
+    overflow_occurred: bool,
 }
 
 impl<'a> Lexer<'a> {
+    /// Create a new lexer for the given input
     pub fn new(input: &'a str) -> Self {
         Self {
             input,
@@ -19,6 +23,7 @@ impl<'a> Lexer<'a> {
             offset: 0,
             line: 1,
             column: 1,
+            overflow_occurred: false,
         }
     }
 
@@ -30,12 +35,22 @@ impl<'a> Lexer<'a> {
     fn advance(&mut self) -> Option<char> {
         let c = self.chars.next();
         if let Some(ch) = c {
-            self.offset += ch.len_utf8();
+            // Use checked arithmetic to prevent overflow
+            self.offset = self.offset.checked_add(ch.len_utf8()).unwrap_or_else(|| {
+                self.overflow_occurred = true;
+                self.offset // Keep the old value on overflow
+            });
             if ch == '\n' {
-                self.line += 1;
+                self.line = self.line.checked_add(1).unwrap_or_else(|| {
+                    self.overflow_occurred = true;
+                    self.line
+                });
                 self.column = 1;
             } else {
-                self.column += 1;
+                self.column = self.column.checked_add(1).unwrap_or_else(|| {
+                    self.overflow_occurred = true;
+                    self.column
+                });
             }
         }
         c
@@ -107,7 +122,10 @@ impl<'a> Lexer<'a> {
         let mut name = String::new();
         while let Some(&ch) = self.peek() {
             if ch.is_alphanumeric() || ch == '_' {
-                name.push(self.advance().unwrap());
+                // Safe: we just checked peek() returned Some
+                if let Some(c) = self.advance() {
+                    name.push(c);
+                }
             } else {
                 break;
             }
@@ -140,7 +158,10 @@ impl<'a> Lexer<'a> {
                     }
                 }
                 _ => {
-                    s.push(self.advance().unwrap());
+                    // Safe: we just checked peek() returned Some
+                    if let Some(c) = self.advance() {
+                        s.push(c);
+                    }
                 }
             }
         }
@@ -155,7 +176,10 @@ impl<'a> Lexer<'a> {
             if ch.is_whitespace() || "{}[],:;\"#\n".contains(ch) {
                 break;
             }
-            s.push(self.advance().unwrap());
+            // Safe: we just checked peek() returned Some
+            if let Some(c) = self.advance() {
+                s.push(c);
+            }
         }
 
         // Try to parse as number

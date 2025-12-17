@@ -64,19 +64,27 @@ fn run() -> Result<(), String> {
 
 // ========== BUILD: Smart compilation based on file type ==========
 //
-// .tqn files → JSON output (default)
+// .tqn files → JSON output (default), use --format tbf for binary
 // .tqq files → Tauq output (default), use --json for JSON
+
+#[derive(Clone, Copy, PartialEq)]
+enum OutputFormat {
+    Json,
+    Tauq,
+    Tbf,
+}
 
 fn cmd_build(args: &[String]) -> Result<(), String> {
     if args.is_empty() {
-        return Err("Missing input file. Usage: tauq build <file.tqn|.tqq> [--json] [--pretty]".to_string());
+        return Err("Missing input file. Usage: tauq build <file.tqn|.tqq> [--format json|tbf|tauq] [--pretty]".to_string());
     }
 
     let input_path = &args[0];
     let mut output_path: Option<PathBuf> = None;
     let mut pretty = false;
-    let mut force_json = false;
-    let mut safe_mode = false;
+    let mut output_format: Option<OutputFormat> = None;
+    let mut safe_mode = true;  // Default to safe mode
+    let mut unsafe_mode_explicitly_set = false;
 
     let mut i = 1;
     while i < args.len() {
@@ -94,11 +102,37 @@ fn cmd_build(args: &[String]) -> Result<(), String> {
                 i += 1;
             }
             "--json" => {
-                force_json = true;
+                output_format = Some(OutputFormat::Json);
                 i += 1;
+            }
+            "--tbf" | "--binary" => {
+                output_format = Some(OutputFormat::Tbf);
+                i += 1;
+            }
+            "--tauq" | "--tqn" => {
+                output_format = Some(OutputFormat::Tauq);
+                i += 1;
+            }
+            "-f" | "--format" => {
+                if i + 1 < args.len() {
+                    output_format = Some(match args[i + 1].to_lowercase().as_str() {
+                        "json" => OutputFormat::Json,
+                        "tbf" | "binary" => OutputFormat::Tbf,
+                        "tauq" | "tqn" => OutputFormat::Tauq,
+                        _ => return Err(format!("Unknown format: {}. Use json, tbf, or tauq", args[i + 1])),
+                    });
+                    i += 2;
+                } else {
+                    return Err("Missing format after --format".to_string());
+                }
             }
             "-s" | "--safe" => {
                 safe_mode = true;
+                i += 1;
+            }
+            "--unsafe" => {
+                safe_mode = false;
+                unsafe_mode_explicitly_set = true;
                 i += 1;
             }
             _ => return Err(format!("Unknown option: {}", args[i])),
@@ -107,6 +141,13 @@ fn cmd_build(args: &[String]) -> Result<(), String> {
 
     // Detect file type
     let is_tqq = input_path.ends_with(".tqq");
+
+    // Warn if using unsafe mode with TauqQ files
+    if is_tqq && !safe_mode && unsafe_mode_explicitly_set {
+        eprintln!("\x1b[33m⚠ WARNING: Running TauqQ with --unsafe enables arbitrary shell command execution.\x1b[0m");
+        eprintln!("\x1b[33m  Only use --unsafe with trusted input files.\x1b[0m");
+        eprintln!();
+    }
 
     // Read source
     let source = fs::read_to_string(input_path)
@@ -144,29 +185,53 @@ fn cmd_build(args: &[String]) -> Result<(), String> {
     };
 
     // Determine output format:
-    // - .tqn → JSON (default)
-    // - .tqq → Tauq (default), --json forces JSON
-    let output = if is_tqq && !force_json {
-        // .tqq defaults to Tauq output
-        tauq::format_to_tauq(&json)
-    } else {
-        // .tqn defaults to JSON, or .tqq with --json
-        if pretty {
-            serde_json::to_string_pretty(&json)
-        } else {
-            serde_json::to_string(&json)
-        }
-        .map_err(|e| format!("JSON serialization error: {}", e))?
-    };
+    // - .tqn → JSON (default), --format tbf for binary
+    // - .tqq → Tauq (default), --json forces JSON, --format tbf for binary
+    let format = output_format.unwrap_or(if is_tqq { OutputFormat::Tauq } else { OutputFormat::Json });
 
-    // Write output
-    if let Some(path) = output_path {
-        fs::write(&path, &output)
-            .map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
-        let format_name = if is_tqq && !force_json { "Tauq" } else { "JSON" };
-        eprintln!("✓ Built {} → {} ({})", input_path, path.display(), format_name);
-    } else {
-        println!("{}", output);
+    match format {
+        OutputFormat::Tbf => {
+            // Binary output
+            let tbf_bytes = tauq::tbf::encode_json(&json)
+                .map_err(|e| format!("TBF encoding error: {}", e))?;
+
+            if let Some(path) = output_path {
+                fs::write(&path, &tbf_bytes)
+                    .map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
+                eprintln!("✓ Built {} → {} (TBF, {} bytes)", input_path, path.display(), tbf_bytes.len());
+            } else {
+                // For binary output without file, write to stdout as raw bytes
+                use std::io::Write;
+                std::io::stdout().write_all(&tbf_bytes)
+                    .map_err(|e| format!("Failed to write to stdout: {}", e))?;
+            }
+        }
+        OutputFormat::Tauq => {
+            let output = tauq::format_to_tauq(&json);
+            if let Some(path) = output_path {
+                fs::write(&path, &output)
+                    .map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
+                eprintln!("✓ Built {} → {} (Tauq)", input_path, path.display());
+            } else {
+                println!("{}", output);
+            }
+        }
+        OutputFormat::Json => {
+            let output = if pretty {
+                serde_json::to_string_pretty(&json)
+            } else {
+                serde_json::to_string(&json)
+            }
+            .map_err(|e| format!("JSON serialization error: {}", e))?;
+
+            if let Some(path) = output_path {
+                fs::write(&path, &output)
+                    .map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
+                eprintln!("✓ Built {} → {} (JSON)", input_path, path.display());
+            } else {
+                println!("{}", output);
+            }
+        }
     }
 
     Ok(())
@@ -181,19 +246,20 @@ fn cmd_build_legacy(args: &[String]) -> Result<(), String> {
 
 #[derive(Clone, Copy, PartialEq)]
 enum FormatMode {
-    Standard,   // Space-delimited, readable
-    Optimized,  // Comma-delimited, token-efficient
-    Ultra,      // Comma-delimited + minified, maximum efficiency
+    Default,      // Adaptive schemas, space-delimited, pretty
+    NoSchemas,    // No !def schemas, space-delimited, pretty
+    Optimized,    // Comma-delimited
+    Ultra,        // Comma-delimited + minified
 }
 
 fn cmd_format(args: &[String]) -> Result<(), String> {
     if args.is_empty() {
-        return Err("Missing input file. Usage: tauq format <input.json> [--optimized|--ultra]".to_string());
+        return Err("Missing input file. Usage: tauq format <input.json> [--no-schemas] [--comma] [--minify]".to_string());
     }
 
     let input_path = &args[0];
     let mut output_path: Option<PathBuf> = None;
-    let mut mode = FormatMode::Standard;
+    let mut mode = FormatMode::Default;
 
     let mut i = 1;
     while i < args.len() {
@@ -206,11 +272,15 @@ fn cmd_format(args: &[String]) -> Result<(), String> {
                     return Err("Missing output file after -o".to_string());
                 }
             }
-            "--optimized" | "-O" => {
+            "--no-schemas" => {
+                mode = FormatMode::NoSchemas;
+                i += 1;
+            }
+            "--optimized" | "-O" | "--comma" => {
                 mode = FormatMode::Optimized;
                 i += 1;
             }
-            "--ultra" | "-U" => {
+            "--ultra" | "-U" | "--minify" => {
                 mode = FormatMode::Ultra;
                 i += 1;
             }
@@ -236,13 +306,15 @@ fn cmd_format(args: &[String]) -> Result<(), String> {
 
     // Format to Tauq based on mode
     let tauq_output = match mode {
-        FormatMode::Standard => tauq::tauq::json_to_tauq(&json),
+        FormatMode::Default => tauq::tauq::json_to_tauq(&json),
+        FormatMode::NoSchemas => tauq::tauq::json_to_tauq_no_schemas(&json),
         FormatMode::Optimized => tauq::tauq::json_to_tauq_optimized(&json),
         FormatMode::Ultra => tauq::tauq::json_to_tauq_ultra(&json),
     };
 
     let mode_name = match mode {
-        FormatMode::Standard => "standard",
+        FormatMode::Default => "default",
+        FormatMode::NoSchemas => "no-schemas",
         FormatMode::Optimized => "optimized",
         FormatMode::Ultra => "ultra",
     };
@@ -269,7 +341,8 @@ fn cmd_exec(args: &[String]) -> Result<(), String> {
     let input_path = &args[0];
     let mut output_path: Option<PathBuf> = None;
     let mut pretty = false;
-    let mut safe_mode = false;
+    let mut safe_mode = true;  // Default to safe mode
+    let mut unsafe_mode_explicitly_set = false;
 
     let mut i = 1;
     while i < args.len() {
@@ -290,8 +363,20 @@ fn cmd_exec(args: &[String]) -> Result<(), String> {
                 safe_mode = true;
                 i += 1;
             }
+            "--unsafe" => {
+                safe_mode = false;
+                unsafe_mode_explicitly_set = true;
+                i += 1;
+            }
             _ => return Err(format!("Unknown option: {}", args[i])),
         }
+    }
+
+    // Warn if using unsafe mode
+    if !safe_mode && unsafe_mode_explicitly_set {
+        eprintln!("\x1b[33m⚠ WARNING: Running TauqQ with --unsafe enables arbitrary shell command execution.\x1b[0m");
+        eprintln!("\x1b[33m  Only use --unsafe with trusted input files.\x1b[0m");
+        eprintln!();
     }
 
     // Execute TauqQ
@@ -563,8 +648,8 @@ USAGE:
 
 COMMANDS:
     build <file>            Smart build based on extension:
-                              .tqn → JSON (default output)
-                              .tqq → Tauq (default), use --json for JSON
+                              .tqn → JSON (default), --format tbf for binary
+                              .tqq → Tauq (default), --json for JSON
     format <file.json>      Convert JSON to Tauq
     query <file | -> <expr> Filter/Transform with Rhai expressions
     exec <file.tqq>         Execute Tauq Query (always outputs JSON)
@@ -575,12 +660,21 @@ COMMANDS:
 OPTIONS:
     -o, --output <FILE>     Write output to file
     -p, --pretty            Pretty-print JSON output
-    --json                  Force JSON output (for .tqq files)
-    -s, --safe              Enable safe mode (disable shell execution)
+    -f, --format <FMT>      Output format: json, tbf (binary), tauq
+    --json                  Force JSON output (shorthand for --format json)
+    --tbf, --binary         Force TBF binary output (shorthand for --format tbf)
+    --tauq, --tqn           Force Tauq output (shorthand for --format tauq)
+    -s, --safe              Safe mode (default) - disables shell execution
+    --unsafe                Enable shell execution (use with caution!)
     -h, --help              Print this help
     -v, --version           Print version
 
-FORMAT OPTIONS:
+SECURITY:
+    TauqQ files (.tqq) run in safe mode by default. Shell directives
+    (!emit, !run, !pipe) are disabled unless --unsafe is specified.
+    Only use --unsafe with trusted input files.
+
+FORMAT OPTIONS (for 'format' command):
     -O, --optimized         Comma-delimited (TOON/CSV style, less efficient)
     -U, --ultra             Comma-delimited + minified (TOON/CSV style)
 
@@ -589,36 +683,35 @@ EXAMPLES:
     tauq build config.tqn -o config.json
     tauq build config.tqn --pretty
 
+    # Parse Tauq (.tqn) to TBF binary (84% smaller than JSON)
+    tauq build data.tqn --format tbf -o data.tbf
+    tauq build data.tqn --tbf -o data.tbf
+
     # Execute Tauq Query (.tqq) to Tauq
     tauq build pipeline.tqq -o output.tqn
 
     # Execute Tauq Query (.tqq) to JSON
     tauq build pipeline.tqq --json -o output.json
 
+    # Execute Tauq Query (.tqq) to TBF binary
+    tauq build pipeline.tqq --tbf -o output.tbf
+
     # Convert JSON to Tauq (standard mode)
     tauq format data.json -o data.tqn
 
-    # Convert JSON to Tauq (comma-delimited, TOON/CSV style)
-    tauq format data.json -O -o data.tqn
-
-    # Convert JSON to Tauq (comma-delimited + minified)
-    tauq format data.json -U -o data.tqn
-
     # Filter data using Rhai (our 'jq')
     tauq query users.tqn '.filter(|u| u.age > 30)'
-
-    # Access properties
-    tauq query config.tqn .server.port
 
     # Minify for production
     tauq minify config.tqn -o config.min.tqn
 
 WHY TAUQ:
-    • 44-54% fewer tokens than JSON (verified with tiktoken cl100k_base)
-    • 11% more efficient than TOON/CSV overall
+    • TQN: 44-54% fewer tokens than JSON (verified with tiktoken)
+    • TBF: 84% smaller than JSON (binary columnar format)
     • True streaming via StreamingParser iterator
     • Beautiful, minimal syntax
     • Schema-driven with !def / !use
+    • Apache Iceberg integration for data lakes
     • Programmable with Tauq Query (TQQ)
 
 Learn more: https://tauq.org

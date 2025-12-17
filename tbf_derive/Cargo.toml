@@ -1,0 +1,18 @@
+[package]
+name = "tbf_derive"
+version = "0.1.0"
+edition = "2021"
+authors = ["Tauq Contributors"]
+license = "MIT"
+description = "Derive macros for TBF (Tauq Binary Format) - compile-time schema generation"
+repository = "https://github.com/epistates/tauq"
+keywords = ["serialization", "binary", "derive", "macro"]
+categories = ["encoding", "development-tools::procedural-macro-helpers"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "parsing", "extra-traits"] }

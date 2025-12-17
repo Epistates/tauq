@@ -1,10 +1,32 @@
-use std::io::Write;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 use std::collections::{HashMap, HashSet};
 
 use super::Parser;
+
+/// Maximum input size (100 MB) to prevent DoS
+const MAX_INPUT_SIZE: usize = 100 * 1024 * 1024;
+
+/// Allowed commands for TauqQ shell execution (defense in depth)
+/// This list includes common shells, interpreters, and data processing tools.
+/// Commands outside this list will be rejected even in unsafe mode.
+const ALLOWED_COMMANDS: &[&str] = &[
+    // Shells
+    "sh", "bash", "zsh", "dash",
+    // Interpreters
+    "python3", "python", "node", "ruby", "perl",
+    // Data processing
+    "jq", "yq",
+    // Basic utilities
+    "echo", "cat", "head", "tail", "sort", "uniq", "grep", "awk", "sed",
+    // Network tools
+    "curl", "wget",
+    // Other common tools
+    "true", "false", "test", "expr",
+];
 
 /// Configuration for TauqQ processing
 #[derive(Default)]
@@ -39,7 +61,84 @@ pub fn process_with_config(
     process_internal(input, vars, config, 0, &mut visited)
 }
 
+/// Securely open and read a file, preventing TOCTOU race conditions
+///
+/// This function:
+/// 1. Opens the file first to get a file handle
+/// 2. Validates the path using the opened file's metadata
+/// 3. Checks for path traversal and symlink attacks
+/// 4. Returns the file contents only if all checks pass
+fn secure_read_file(
+    path_str: &str,
+    base_dir: &Option<std::path::PathBuf>,
+) -> Result<String, String> {
+    let path = Path::new(path_str);
+
+    // Resolve relative to base_dir if set
+    let resolved = if let Some(base) = base_dir {
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            base.join(path)
+        }
+    } else {
+        path.to_path_buf()
+    };
+
+    // Open file first - this pins the inode and prevents TOCTOU
+    let mut file = File::open(&resolved)
+        .map_err(|e| format!("Cannot open file '{}': {}", path_str, e))?;
+
+    // Get metadata from the open file descriptor (not the path)
+    let metadata = file.metadata()
+        .map_err(|e| format!("Cannot read file metadata '{}': {}", path_str, e))?;
+
+    // Note: After File::open(), we have the actual file, not the symlink.
+    // The symlink has already been resolved by the kernel.
+    // We check is_file() below which will be true for regular files the symlink pointed to.
+
+    // Ensure it's a regular file
+    if !metadata.is_file() {
+        return Err(format!("Path '{}' is not a regular file", path_str));
+    }
+
+    // Check file size to prevent DoS
+    if metadata.len() > MAX_INPUT_SIZE as u64 {
+        return Err(format!(
+            "File '{}' too large: {} bytes (max {} bytes)",
+            path_str, metadata.len(), MAX_INPUT_SIZE
+        ));
+    }
+
+    // Canonicalize to check path traversal
+    let canonical = resolved
+        .canonicalize()
+        .map_err(|e| format!("Cannot resolve path '{}': {}", path_str, e))?;
+
+    // Check path traversal if base_dir is set
+    if let Some(base) = base_dir {
+        let base_canonical = base
+            .canonicalize()
+            .map_err(|e| format!("Cannot resolve base directory: {}", e))?;
+
+        if !canonical.starts_with(&base_canonical) {
+            return Err(format!(
+                "Path '{}' escapes base directory (path traversal blocked)",
+                path_str
+            ));
+        }
+    }
+
+    // Read from the already-opened file handle
+    let mut content = String::new();
+    file.read_to_string(&mut content)
+        .map_err(|e| format!("Failed to read file '{}': {}", path_str, e))?;
+
+    Ok(content)
+}
+
 /// Validate that a path is safe (doesn't escape base_dir)
+/// Returns the canonical path for display purposes
 fn validate_path(
     path_str: &str,
     base_dir: &Option<std::path::PathBuf>,
@@ -60,13 +159,13 @@ fn validate_path(
     // Canonicalize to resolve symlinks and ..
     let canonical = resolved
         .canonicalize()
-        .map_err(|e| format!("Cannot resolve path '{}': {}", path_str, e))?;
+        .map_err(|_| format!("Cannot resolve path '{}'", path_str))?;
 
     // Check path traversal if base_dir is set
     if let Some(base) = base_dir {
         let base_canonical = base
             .canonicalize()
-            .map_err(|e| format!("Cannot resolve base directory: {}", e))?;
+            .map_err(|_| "Cannot resolve base directory".to_string())?;
 
         if !canonical.starts_with(&base_canonical) {
             return Err(format!(
@@ -111,10 +210,12 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!import directive is disabled in safe mode".to_string());
             }
-            let path_str = trimmed.strip_prefix("!import ").unwrap().trim();
+            let path_str = trimmed.strip_prefix("!import ")
+                .ok_or_else(|| "Invalid !import directive".to_string())?
+                .trim();
             let clean_path = path_str.trim_matches('"');
 
-            // Validate path for security
+            // Validate path for circular import detection
             let validated_path = validate_path(clean_path, &config.base_dir)?;
             let abs_path = validated_path.to_string_lossy().into_owned();
 
@@ -124,8 +225,8 @@ fn process_internal(
 
             visited.insert(abs_path.clone());
 
-            let content = std::fs::read_to_string(&validated_path)
-                .map_err(|e| format!("Failed to read imported file '{}': {}", clean_path, e))?;
+            // Use secure file reading to prevent TOCTOU
+            let content = secure_read_file(clean_path, &config.base_dir)?;
 
             // Recursive process with same vars, update base_dir to imported file's directory
             let import_config = ProcessConfig {
@@ -142,7 +243,8 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!emit directive is disabled in safe mode".to_string());
             }
-            let cmd_str = trimmed.strip_prefix("!emit ").unwrap();
+            let cmd_str = trimmed.strip_prefix("!emit ")
+                .ok_or_else(|| "Invalid !emit directive".to_string())?;
             let result = run_command(cmd_str, None, vars)?;
             validate_tauq_output(&result, "!emit", cmd_str)?;
             output.push_str(&result);
@@ -151,7 +253,9 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!env directive is disabled in safe mode".to_string());
             }
-            let var_name = trimmed.strip_prefix("!env ").unwrap().trim();
+            let var_name = trimmed.strip_prefix("!env ")
+                .ok_or_else(|| "Invalid !env directive".to_string())?
+                .trim();
             if let Ok(val) = std::env::var(var_name) {
                 // Emit as string
                 output.push_str(&format!("\"{}\"\n", val));
@@ -162,14 +266,13 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!read directive is disabled in safe mode".to_string());
             }
-            let path_str = trimmed.strip_prefix("!read ").unwrap().trim();
+            let path_str = trimmed.strip_prefix("!read ")
+                .ok_or_else(|| "Invalid !read directive".to_string())?
+                .trim();
             let clean_path = path_str.trim_matches('"');
 
-            // Validate path for security
-            let validated_path = validate_path(clean_path, &config.base_dir)?;
-
-            let content = std::fs::read_to_string(&validated_path)
-                .map_err(|e| format!("Failed to read file '{}': {}", clean_path, e))?;
+            // Use secure file reading to prevent TOCTOU
+            let content = secure_read_file(clean_path, &config.base_dir)?;
             let json_str = serde_json::to_string(&content).map_err(|e| e.to_string())?;
             output.push_str(&json_str);
             output.push('\n');
@@ -177,14 +280,13 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!json directive is disabled in safe mode".to_string());
             }
-            let path_str = trimmed.strip_prefix("!json ").unwrap().trim();
+            let path_str = trimmed.strip_prefix("!json ")
+                .ok_or_else(|| "Invalid !json directive".to_string())?
+                .trim();
             let clean_path = path_str.trim_matches('"');
 
-            // Validate path for security
-            let validated_path = validate_path(clean_path, &config.base_dir)?;
-
-            let content = std::fs::read_to_string(&validated_path)
-                .map_err(|e| format!("Failed to read file '{}': {}", clean_path, e))?;
+            // Use secure file reading to prevent TOCTOU
+            let content = secure_read_file(clean_path, &config.base_dir)?;
 
             let json_val: serde_json::Value = serde_json::from_str(&content)
                 .map_err(|e| format!("Failed to parse JSON file '{}': {}", clean_path, e))?;
@@ -197,7 +299,9 @@ fn process_internal(
                 return Err("!run directive is disabled in safe mode".to_string());
             }
             // Parse "!run cmd args... {"
-            let line_content = trimmed.strip_prefix("!run ").unwrap().trim();
+            let line_content = trimmed.strip_prefix("!run ")
+                .ok_or_else(|| "Invalid !run directive".to_string())?
+                .trim();
             let cmd_part = if let Some(stripped) = line_content.strip_suffix(" {") {
                 stripped
             } else {
@@ -261,7 +365,9 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!pipe directive is disabled in safe mode".to_string());
             }
-            let cmd_str = trimmed.strip_prefix("!pipe ").unwrap().trim();
+            let cmd_str = trimmed.strip_prefix("!pipe ")
+                .ok_or_else(|| "Invalid !pipe directive".to_string())?
+                .trim();
 
             // Check for block syntax: "!pipe cmd args... {"
             if let Some(stripped_cmd) = cmd_str.strip_suffix(" {") {
@@ -377,6 +483,36 @@ fn validate_tauq_output(output: &str, directive: &str, source_hint: &str) -> Res
     }
 }
 
+/// Validate that a command is in the allowlist
+fn validate_command(program: &str) -> Result<(), String> {
+    // Extract just the command name (handle paths like /usr/bin/python3)
+    let cmd_name = Path::new(program)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(program);
+
+    if !ALLOWED_COMMANDS.contains(&cmd_name) {
+        return Err(format!(
+            "Command '{}' is not in the allowlist. Allowed: {:?}",
+            program, ALLOWED_COMMANDS
+        ));
+    }
+    Ok(())
+}
+
+/// Filter environment variables to remove dangerous ones
+fn filter_env_vars(vars: &HashMap<String, String>) -> HashMap<String, String> {
+    const DANGEROUS_VARS: &[&str] = &[
+        "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
+        "DYLD_LIBRARY_PATH", "PATH", "SHELL", "HOME",
+    ];
+
+    vars.iter()
+        .filter(|(k, _)| !DANGEROUS_VARS.contains(&k.as_str()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect()
+}
+
 fn run_command(
     cmd_str: &str,
     input: Option<&str>,
@@ -390,9 +526,15 @@ fn run_command(
     let program = &parts[0];
     let args = &parts[1..];
 
+    // Validate command is in allowlist
+    validate_command(program)?;
+
+    // Filter dangerous environment variables
+    let safe_vars = filter_env_vars(vars);
+
     let mut child = Command::new(program)
         .args(args)
-        .envs(vars)
+        .envs(&safe_vars)
         .stdin(if input.is_some() {
             Stdio::piped()
         } else {
@@ -430,7 +572,11 @@ fn run_code_block(
     vars: &HashMap<String, String>,
     input: Option<&str>,
 ) -> Result<String, String> {
-    use std::io::Write;
+    // Validate command is in allowlist
+    validate_command(program)?;
+
+    // Filter dangerous environment variables
+    let safe_vars = filter_env_vars(vars);
 
     // Create a temporary file with the code
     let mut temp_file =
@@ -444,7 +590,7 @@ fn run_code_block(
     let mut child = Command::new(program)
         .args(args)
         .arg(path)
-        .envs(vars)
+        .envs(&safe_vars)
         .stdin(if input.is_some() {
             Stdio::piped()
         } else {

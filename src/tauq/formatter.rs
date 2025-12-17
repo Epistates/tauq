@@ -28,6 +28,23 @@ impl Default for Delimiter {
     }
 }
 
+/// Strategy for when to use !def schema definitions
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SchemaStrategy {
+    /// Automatically use !def when it reduces tokens (default)
+    Adaptive,
+    /// Never use !def schemas (force inline key:value everywhere)
+    Never,
+    /// Always use !def when possible (for testing/debugging)
+    Always,
+}
+
+impl Default for SchemaStrategy {
+    fn default() -> Self {
+        SchemaStrategy::Adaptive
+    }
+}
+
 /// Schema information collected during formatting
 #[derive(Clone, Debug)]
 struct SchemaInfo {
@@ -166,54 +183,72 @@ impl SchemaRegistry {
 }
 
 pub struct Formatter {
+    delimiter: Delimiter,
     minify: bool,
     indent_size: usize,
-    delimiter: Delimiter,
+    schema_strategy: SchemaStrategy,
 }
 
 impl Formatter {
+    /// Create formatter with sensible defaults
+    /// - Adaptive schema usage (uses !def when it saves tokens)
+    /// - Space-delimited rows
+    /// - Pretty (multi-line, indented)
     pub fn new() -> Self {
         Self {
+            delimiter: Delimiter::Space,
             minify: false,
             indent_size: 2,
-            delimiter: Delimiter::Space,
+            schema_strategy: SchemaStrategy::Adaptive,
         }
     }
 
-    pub fn minified() -> Self {
-        Self {
-            minify: true,
-            indent_size: 0,
-            delimiter: Delimiter::Space,
-        }
+    // ========== Builder methods (chainable) ==========
+
+    /// Never use !def schemas (force inline key:value everywhere)
+    /// Use for: LLM applications, testing comprehension
+    pub fn without_schemas(mut self) -> Self {
+        self.schema_strategy = SchemaStrategy::Never;
+        self
     }
 
-    /// Comma-delimited mode: matches TOON/CSV visual style
-    /// Note: Space-delimited (standard) is actually MORE token-efficient
-    /// because cl100k_base tokenizes spaces better than commas
+    /// Always use !def when possible (for testing/debugging)
+    pub fn always_schemas(mut self) -> Self {
+        self.schema_strategy = SchemaStrategy::Always;
+        self
+    }
+
+    /// Use comma delimiter in schema rows: `1,Alice,Engineering`
+    pub fn with_comma_delimiter(mut self) -> Self {
+        self.delimiter = Delimiter::Comma;
+        self
+    }
+
+    /// Single-line output with minimal whitespace
+    pub fn minified(mut self) -> Self {
+        self.minify = true;
+        self
+    }
+
+    /// Set custom indentation size
+    pub fn with_indent(mut self, size: usize) -> Self {
+        self.indent_size = size;
+        self
+    }
+
+    // ========== Deprecated convenience constructors ==========
+    // Kept for backwards compatibility, will be removed in future versions
+
+    /// Deprecated: Use Formatter::new().with_comma_delimiter()
+    #[deprecated(since = "0.2.0", note = "Use Formatter::new().with_comma_delimiter()")]
     pub fn token_optimized() -> Self {
-        Self {
-            minify: false,
-            indent_size: 2,
-            delimiter: Delimiter::Comma,
-        }
+        Self::new().with_comma_delimiter()
     }
 
-    /// Token-optimized + minified for absolute minimum tokens
+    /// Deprecated: Use Formatter::new().with_comma_delimiter().minified()
+    #[deprecated(since = "0.2.0", note = "Use Formatter::new().with_comma_delimiter().minified()")]
     pub fn ultra_compact() -> Self {
-        Self {
-            minify: true,
-            indent_size: 0,
-            delimiter: Delimiter::Comma,
-        }
-    }
-
-    pub fn with_indent(indent_size: usize) -> Self {
-        Self {
-            minify: false,
-            indent_size,
-            delimiter: Delimiter::Space,
-        }
+        Self::new().with_comma_delimiter().minified()
     }
 
     pub fn with_delimiter(mut self, delimiter: Delimiter) -> Self {
@@ -610,6 +645,14 @@ impl Formatter {
 
     /// Detect if array contains uniform objects suitable for schema
     fn detect_uniform_objects(&self, arr: &[Value]) -> Option<Vec<String>> {
+        // Check schema strategy
+        match self.schema_strategy {
+            SchemaStrategy::Never => return None,
+            SchemaStrategy::Always | SchemaStrategy::Adaptive => {
+                // Continue with detection
+            }
+        }
+
         if arr.len() < 2 {
             return None; // Need at least 2 objects for schema to be beneficial
         }
@@ -773,23 +816,39 @@ impl Default for Formatter {
     }
 }
 
-/// Format JSON value to Tauq (pretty, space-delimited)
+/// Format JSON value to Tauq with intelligent schema usage
+/// - Automatically uses !def when it reduces tokens (adaptive)
+/// - Space-delimited, pretty-printed
 pub fn json_to_tauq(value: &Value) -> String {
     Formatter::new().format(value)
 }
 
 /// Format JSON value to minified Tauq
 pub fn minify_tauq(value: &Value) -> String {
-    Formatter::minified().format(value)
+    Formatter::new().minified().format(value)
 }
 
-/// Format JSON to token-optimized Tauq (comma-delimited for max efficiency)
+/// Format JSON without !def schemas (pure key:value syntax)
+/// Best for LLM applications - simpler, more similar to training data
+pub fn json_to_tauq_no_schemas(value: &Value) -> String {
+    Formatter::new().without_schemas().format(value)
+}
+
+/// Deprecated: Use json_to_tauq_no_schemas
+#[deprecated(since = "0.2.0", note = "Use json_to_tauq_no_schemas - 'simple' terminology removed")]
+pub fn json_to_tauq_simple(value: &Value) -> String {
+    json_to_tauq_no_schemas(value)
+}
+
+/// Format JSON with comma-delimited schema rows
 pub fn json_to_tauq_optimized(value: &Value) -> String {
+    #[allow(deprecated)]
     Formatter::token_optimized().format(value)
 }
 
-/// Format JSON to ultra-compact Tauq (comma-delimited + minified)
+/// Format JSON with comma-delimited + minified
 pub fn json_to_tauq_ultra(value: &Value) -> String {
+    #[allow(deprecated)]
     Formatter::ultra_compact().format(value)
 }
 

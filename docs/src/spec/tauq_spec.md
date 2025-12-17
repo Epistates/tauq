@@ -29,23 +29,38 @@ tags [web api "machine learning"]
 Tauq favors a "field-value" pair sequence for top-level data, or schema-defined rows.
 
 ## Tabular Data & Schemas
-The core feature of Tauq is schema-driven data, which drastically reduces token count by removing repeated keys.
 
-### `!def`
-Defines a schema for a type.
+Tauq supports **optional** schema definitions (`!def`) for token-efficient representation of repeated structures.
+
+**When to use schemas**:
+- Large datasets with uniform objects (100+ items)
+- Schema reused multiple times in document
+- Token efficiency is critical
+
+**When to skip schemas**:
+- Small datasets or one-time structures
+- LLM applications prioritizing comprehension
+- Use `--no-schemas` flag: `tauq format data.json --no-schemas`
+
+### `!def` (Optional)
+
+Defines a reusable schema for a type.
 
 ```tqn
 !def User id name email
 ```
 
-### `!use`
-Sets the active schema. Subsequent lines are interpreted as rows of values matching the schema fields.
+### `!use` (Optional)
+
+Activates a schema. Subsequent lines are interpreted as rows matching the schema fields.
 
 ```tqn
 !use User
 1 Alice "alice@example.com"
 2 Bob "bob@example.com"
 ```
+
+**Note**: Formatters SHOULD automatically determine when schemas are beneficial by comparing token costs.
 
 ### Implicit Schema Usage
 The `!def` directive both defines AND activates a schema. Data rows immediately following `!def` are parsed using that schema. Use `!use` explicitly only when switching to a different previously-defined schema.

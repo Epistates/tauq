@@ -1,0 +1,48 @@
+{
+  "config": {
+    "num_records": 200,
+    "num_questions": 50,
+    "num_runs": 1,
+    "seed": 42,
+    "model": "qwen/qwen3-vl-4b",
+    "timestamp": "2025-11-30T14:45:38.148924"
+  },
+  "results": {
+    "tauq": {
+      "format_name": "tauq",
+      "total_questions": 50,
+      "correct": 48,
+      "accuracy": 0.96,
+      "ci_lower": 0.8653966212204534,
+      "ci_upper": 0.9889613473391734,
+      "total_tokens": 3839,
+      "avg_latency_ms": 7853.574104309082,
+      "accuracy_per_1k_tokens": 0.25006512112529306,
+      "errors": 0
+    },
+    "json": {
+      "format_name": "json",
+      "total_questions": 50,
+      "correct": 50,
+      "accuracy": 1.0,
+      "ci_lower": 0.9286499658256813,
+      "ci_upper": 1,
+      "total_tokens": 7386,
+      "avg_latency_ms": 12908.831005096436,
+      "accuracy_per_1k_tokens": 0.13539128080151638,
+      "errors": 0
+    },
+    "csv": {
+      "format_name": "csv",
+      "total_questions": 50,
+      "correct": 47,
+      "accuracy": 0.94,
+      "ci_lower": 0.8378265662912299,
+      "ci_upper": 0.9793854036353695,
+      "total_tokens": 3932,
+      "avg_latency_ms": 7848.404331207275,
+      "accuracy_per_1k_tokens": 0.23906408952187183,
+      "errors": 0
+    }
+  }
+}

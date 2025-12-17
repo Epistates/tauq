@@ -50,19 +50,27 @@ impl Default for Context {
     }
 }
 
+/// Maximum nesting depth to prevent stack overflow from deeply nested structures
+const MAX_NESTING_DEPTH: usize = 100;
+
+/// Parser for Tauq source code
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     current_token: Option<SpannedToken>,
     peek_token: Option<SpannedToken>,
     context: Context,
     active_shape: Option<String>,
+    /// Current nesting depth for recursion protection
+    nesting_depth: usize,
 }
 
 impl<'a> Parser<'a> {
+    /// Create a new parser for the given source
     pub fn new(source: &'a str) -> Self {
         Self::new_with_context(source, Context::new())
     }
 
+    /// Create a new parser with a shared context
     pub fn new_with_context(source: &'a str, context: Context) -> Self {
         let mut lexer = Lexer::new(source);
         let current_token = lexer.next_token();
@@ -73,6 +81,7 @@ impl<'a> Parser<'a> {
             peek_token,
             context,
             active_shape: None,
+            nesting_depth: 0,
         }
     }
 
@@ -618,6 +627,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_list(&mut self) -> Result<Option<Value>, ParseError> {
+        // Check nesting depth to prevent stack overflow
+        if self.nesting_depth >= MAX_NESTING_DEPTH {
+            return Err(self.make_error(format!(
+                "Maximum nesting depth ({}) exceeded - structure too deeply nested",
+                MAX_NESTING_DEPTH
+            )));
+        }
+        self.nesting_depth += 1;
+
         self.advance(); // Skip [
         let mut list = Vec::new();
 
@@ -631,6 +649,7 @@ impl<'a> Parser<'a> {
                     Token::RBracket => {
                         self.advance(); // Skip ]
                         self.active_shape = outer_shape; // Restore outer shape
+                        self.nesting_depth -= 1;
                         return Ok(Some(Value::Array(list)));
                     }
                     Token::Newline | Token::Semi => {
@@ -685,6 +704,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_object(&mut self) -> Result<Option<Value>, ParseError> {
+        // Check nesting depth to prevent stack overflow
+        if self.nesting_depth >= MAX_NESTING_DEPTH {
+            return Err(self.make_error(format!(
+                "Maximum nesting depth ({}) exceeded - structure too deeply nested",
+                MAX_NESTING_DEPTH
+            )));
+        }
+        self.nesting_depth += 1;
+
         self.advance(); // Skip {
         let mut map = Map::new();
         loop {
@@ -692,6 +720,7 @@ impl<'a> Parser<'a> {
                 match st.token {
                     Token::RBrace => {
                         self.advance(); // Skip }
+                        self.nesting_depth -= 1;
                         return Ok(Some(Value::Object(map)));
                     }
                     Token::Newline | Token::Semi => {
