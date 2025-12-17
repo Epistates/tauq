@@ -52,6 +52,8 @@ mod stats_collector;
 mod simd_decode;
 mod parallel_encode;
 mod batch_encode;
+mod adaptive_encode;
+mod predicate_pushdown;
 
 pub use varint::*;
 pub use dictionary::*;
@@ -89,6 +91,11 @@ pub use stats::ColumnStats;
 pub use bitmap::NullBitmap;
 pub use bloom::BloomFilter;
 pub use stats_collector::StatisticsCollector;
+pub use adaptive_encode::{
+    CompressionCodec, CodecAnalyzer, CodecAnalysis,
+    DeltaEncoder, DictionaryEncoder, RLEEncoder, RunLengthValue,
+};
+pub use predicate_pushdown::{Predicate, QueryFilter};
 
 #[cfg(feature = "performance")]
 pub use parallel_encode::{ParallelBatchEncoder, ParallelEncodingStats};
