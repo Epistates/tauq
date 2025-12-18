@@ -84,3 +84,7 @@ harness = false
 [[bench]]
 name = "codec_benchmark"
 harness = false
+
+[[bench]]
+name = "compression_real_data"
+harness = false
