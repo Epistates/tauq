@@ -80,3 +80,7 @@ harness = false
 [[bench]]
 name = "tbf_benchmark"
 harness = false
+
+[[bench]]
+name = "codec_benchmark"
+harness = false
