@@ -9,7 +9,7 @@ use super::schema::{SchemaType, SchemaRegistry};
 use super::stats_collector::StatisticsCollector;
 use super::adaptive_encode::CodecAnalyzer;
 use super::varint::*;
-use super::{TBF_MAGIC, TBF_VERSION, FLAG_DICTIONARY, TypeTag};
+use super::{TBF_MAGIC, TBF_VERSION, FLAG_DICTIONARY, FLAG_CODEC_METADATA, TypeTag};
 use std::collections::HashMap;
 
 /// Encoding mode flags
@@ -31,6 +31,8 @@ pub struct TbfSerializer {
     pub(crate) schemas: SchemaRegistry,
     /// Schema buffer (written after dictionary)
     pub(crate) schema_buf: Vec<u8>,
+    /// Codec metadata buffer (written after schemas, before data)
+    pub(crate) codec_metadata_buf: Vec<u8>,
     /// Current encoding context
     pub(crate) context: EncodingContext,
     /// Nesting depth
@@ -41,6 +43,8 @@ pub struct TbfSerializer {
     pub(crate) codec_analyzer: Option<CodecAnalyzer>,
     /// Selected codecs per field/column (Phase 3)
     pub(crate) selected_codecs: HashMap<String, super::adaptive_encode::CompressionCodec>,
+    /// Collected codec metadata (Phase 3)
+    pub(crate) codec_metadata: Vec<super::codec_encode::CodecMetadata>,
 }
 
 /// Tracks the current encoding context for schema detection
@@ -77,11 +81,13 @@ impl TbfSerializer {
             dict: StringDictionary::new(),
             schemas: SchemaRegistry::new(),
             schema_buf: Vec::new(),
+            codec_metadata_buf: Vec::new(),
             context: EncodingContext::default(),
             depth: 0,
             stats: None,
             codec_analyzer: None,
             selected_codecs: HashMap::new(),
+            codec_metadata: Vec::new(),
         }
     }
 
@@ -92,11 +98,13 @@ impl TbfSerializer {
             dict: StringDictionary::with_capacity(capacity / 32),
             schemas: SchemaRegistry::new(),
             schema_buf: Vec::new(),
+            codec_metadata_buf: Vec::new(),
             context: EncodingContext::default(),
             depth: 0,
             stats: None,
             codec_analyzer: None,
             selected_codecs: HashMap::new(),
+            codec_metadata: Vec::new(),
         }
     }
 
@@ -107,11 +115,13 @@ impl TbfSerializer {
             dict: StringDictionary::new(),
             schemas: SchemaRegistry::new(),
             schema_buf: Vec::new(),
+            codec_metadata_buf: Vec::new(),
             context: EncodingContext::default(),
             depth: 0,
             stats: Some(StatisticsCollector::new()),
             codec_analyzer: None,
             selected_codecs: HashMap::new(),
+            codec_metadata: Vec::new(),
         }
     }
 
@@ -122,11 +132,13 @@ impl TbfSerializer {
             dict: StringDictionary::with_capacity(capacity / 32),
             schemas: SchemaRegistry::new(),
             schema_buf: Vec::new(),
+            codec_metadata_buf: Vec::new(),
             context: EncodingContext::default(),
             depth: 0,
             stats: Some(StatisticsCollector::new()),
             codec_analyzer: None,
             selected_codecs: HashMap::new(),
+            codec_metadata: Vec::new(),
         }
     }
 
@@ -137,11 +149,13 @@ impl TbfSerializer {
             dict: StringDictionary::new(),
             schemas: SchemaRegistry::new(),
             schema_buf: Vec::new(),
+            codec_metadata_buf: Vec::new(),
             context: EncodingContext::default(),
             depth: 0,
             stats: None,
             codec_analyzer: Some(CodecAnalyzer::new(100)),
             selected_codecs: HashMap::new(),
+            codec_metadata: Vec::new(),
         }
     }
 
@@ -152,11 +166,13 @@ impl TbfSerializer {
             dict: StringDictionary::new(),
             schemas: SchemaRegistry::new(),
             schema_buf: Vec::new(),
+            codec_metadata_buf: Vec::new(),
             context: EncodingContext::default(),
             depth: 0,
             stats: Some(StatisticsCollector::new()),
             codec_analyzer: Some(CodecAnalyzer::new(100)),
             selected_codecs: HashMap::new(),
+            codec_metadata: Vec::new(),
         }
     }
 
@@ -172,6 +188,19 @@ impl TbfSerializer {
         dict_buf.clear();
         self.dict.encode(&mut dict_buf);
 
+        // Encode codec metadata (Phase 3)
+        if !self.codec_metadata.is_empty() {
+            use super::varint::encode_varint;
+            // Write codec count
+            encode_varint(self.codec_metadata.len() as u64, &mut self.codec_metadata_buf);
+            // Write each codec metadata
+            for metadata in &self.codec_metadata {
+                let encoded = metadata.encode();
+                encode_varint(encoded.len() as u64, &mut self.codec_metadata_buf);
+                self.codec_metadata_buf.extend_from_slice(&encoded);
+            }
+        }
+
         // Determine mode
         let mode = if self.schemas.is_empty() {
             MODE_SELF_DESCRIBING
@@ -179,12 +208,21 @@ impl TbfSerializer {
             MODE_SCHEMA
         };
 
-        let mut result = Vec::with_capacity(8 + dict_buf.len() + self.schema_buf.len() + self.buf.len());
+        // Determine flags
+        let mut flags = FLAG_DICTIONARY;
+        if !self.codec_metadata_buf.is_empty() {
+            flags |= FLAG_CODEC_METADATA;
+        }
+        flags |= mode << 4;
+
+        let mut result = Vec::with_capacity(
+            8 + dict_buf.len() + self.schema_buf.len() + self.codec_metadata_buf.len() + self.buf.len()
+        );
 
         // Write header
         result.extend_from_slice(&TBF_MAGIC);
         result.push(TBF_VERSION);
-        result.push(FLAG_DICTIONARY | (mode << 4));
+        result.push(flags);
         result.extend_from_slice(&[0u8; 2]); // Reserved
 
         // Write dictionary
@@ -193,6 +231,11 @@ impl TbfSerializer {
         // Write schemas (if any)
         if mode == MODE_SCHEMA {
             result.extend_from_slice(&self.schema_buf);
+        }
+
+        // Write codec metadata (if any)
+        if !self.codec_metadata_buf.is_empty() {
+            result.extend_from_slice(&self.codec_metadata_buf);
         }
 
         // Write data
@@ -215,6 +258,16 @@ impl TbfSerializer {
     /// Get reference to output buffer
     pub fn output(&self) -> &[u8] {
         &self.buf
+    }
+
+    /// Record codec metadata for a field/column (Phase 3)
+    pub fn add_codec_metadata(&mut self, metadata: super::codec_encode::CodecMetadata) {
+        self.codec_metadata.push(metadata);
+    }
+
+    /// Get the number of codec metadata entries collected
+    pub fn codec_metadata_count(&self) -> usize {
+        self.codec_metadata.len()
     }
 
     /// Write a type tag
@@ -526,5 +579,105 @@ mod tests {
         // They should not interfere with each other
         assert_eq!(serializer.depth, 0);
         assert!(serializer.buf.is_empty());
+    }
+
+    #[test]
+    fn test_codec_metadata_collection() {
+        use crate::tbf::codec_encode::CodecMetadata;
+
+        let mut serializer = TbfSerializer::new();
+
+        // Add codec metadata
+        serializer.add_codec_metadata(CodecMetadata::Delta { initial_value: 100 });
+        serializer.add_codec_metadata(CodecMetadata::Dictionary { dictionary_size: 50 });
+
+        assert_eq!(serializer.codec_metadata_count(), 2);
+    }
+
+    #[test]
+    fn test_codec_metadata_binary_encoding() {
+        use crate::tbf::codec_encode::CodecMetadata;
+
+        let mut serializer = TbfSerializer::new();
+
+        // Add metadata for a Delta codec
+        serializer.add_codec_metadata(CodecMetadata::Delta { initial_value: 42 });
+
+        let bytes = serializer.into_bytes();
+
+        // Check header has codec metadata flag
+        assert!(bytes.len() > 8);
+        let flags = bytes[5];
+        // FLAG_CODEC_METADATA = 0x04
+        assert!(flags & 0x04 != 0, "Codec metadata flag should be set");
+    }
+
+    #[test]
+    fn test_codec_metadata_format_section() {
+        use crate::tbf::codec_encode::CodecMetadata;
+
+        let mut serializer = TbfSerializer::with_codecs();
+
+        // Add codec metadata
+        serializer.add_codec_metadata(CodecMetadata::RLE);
+        serializer.add_codec_metadata(CodecMetadata::Dictionary { dictionary_size: 100 });
+
+        let bytes = serializer.into_bytes();
+
+        // Verify structure: [header][dict][codecs][data][footer?]
+        assert!(bytes.len() > 8);
+        // Verify codec metadata flag is set
+        let flags = bytes[5];
+        assert!(flags & 0x04 != 0);
+    }
+
+    #[test]
+    fn test_codec_metadata_with_statistics() {
+        use crate::tbf::codec_encode::CodecMetadata;
+
+        let mut serializer = TbfSerializer::with_codecs_and_statistics();
+
+        serializer.add_codec_metadata(CodecMetadata::Delta { initial_value: 0 });
+
+        let bytes = serializer.into_bytes();
+
+        // Should have both codec metadata and stats footer
+        assert!(bytes.len() > 8);
+        let flags = bytes[5];
+        // Should have codec metadata flag set (0x04)
+        assert!(flags & 0x04 != 0);
+    }
+
+    #[test]
+    fn test_no_codec_metadata_no_flag() {
+        let serializer = TbfSerializer::new();
+        let bytes = serializer.into_bytes();
+
+        // Check header does NOT have codec metadata flag
+        let flags = bytes[5];
+        // FLAG_CODEC_METADATA = 0x04 should not be set
+        assert!(flags & 0x04 == 0, "Codec metadata flag should not be set when no codecs");
+    }
+
+    #[test]
+    fn test_multiple_codec_metadata_entries() {
+        use crate::tbf::codec_encode::CodecMetadata;
+
+        let mut serializer = TbfSerializer::new();
+
+        // Add multiple codec metadata entries
+        for i in 0..5 {
+            serializer.add_codec_metadata(CodecMetadata::Delta {
+                initial_value: i as i64,
+            });
+        }
+
+        assert_eq!(serializer.codec_metadata_count(), 5);
+
+        let bytes = serializer.into_bytes();
+
+        // Verify codec metadata flag is set
+        let flags = bytes[5];
+        assert!(flags & 0x04 != 0);
     }
 }

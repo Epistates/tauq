@@ -28,8 +28,20 @@
 //! │   Count: varint                     │
 //! │   Strings: [len:varint, utf8...]    │
 //! ├─────────────────────────────────────┤
+//! │ Schemas (optional)                  │
+//! │   [schema definitions...]           │
+//! ├─────────────────────────────────────┤
+//! │ Codec Metadata (optional)           │
+//! │   Count: varint                     │
+//! │   For each codec:                   │
+//! │     Type: u8                        │
+//! │     Metadata: [varint/specific]     │
+//! ├─────────────────────────────────────┤
 //! │ Data Section                        │
 //! │   Encoded values (type-tagged)      │
+//! ├─────────────────────────────────────┤
+//! │ Statistics Footer (optional)        │
+//! │   Footer offset: u64                │
 //! └─────────────────────────────────────┘
 //! ```
 
@@ -54,6 +66,7 @@ mod parallel_encode;
 mod batch_encode;
 mod adaptive_encode;
 mod predicate_pushdown;
+mod codec_encode;
 
 pub use varint::*;
 pub use dictionary::*;
@@ -96,6 +109,7 @@ pub use adaptive_encode::{
     DeltaEncoder, DictionaryEncoder, RLEEncoder, RunLengthValue,
 };
 pub use predicate_pushdown::{Predicate, QueryFilter};
+pub use codec_encode::{CodecEncodingContext, CodecMetadata};
 
 #[cfg(feature = "performance")]
 pub use parallel_encode::{ParallelBatchEncoder, ParallelEncodingStats};
@@ -119,6 +133,9 @@ pub const TBF_VERSION: u8 = 1;
 
 /// Flag: String dictionary enabled
 pub const FLAG_DICTIONARY: u8 = 0x02;
+
+/// Flag: Codec metadata section enabled
+pub const FLAG_CODEC_METADATA: u8 = 0x04;
 
 // ============================================================================
 // Type Tags
