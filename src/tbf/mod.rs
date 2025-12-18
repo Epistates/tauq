@@ -67,6 +67,7 @@ mod batch_encode;
 mod adaptive_encode;
 mod predicate_pushdown;
 mod codec_encode;
+mod codec_decode;
 
 pub use varint::*;
 pub use dictionary::*;
@@ -110,6 +111,7 @@ pub use adaptive_encode::{
 };
 pub use predicate_pushdown::{Predicate, QueryFilter};
 pub use codec_encode::{CodecEncodingContext, CodecMetadata};
+pub use codec_decode::{CodecDecodingContext, decode_codec_metadata};
 
 #[cfg(feature = "performance")]
 pub use parallel_encode::{ParallelBatchEncoder, ParallelEncodingStats};
