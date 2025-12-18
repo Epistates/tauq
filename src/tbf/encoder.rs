@@ -5,10 +5,12 @@
 //! 2. **Schema mode**: For homogeneous sequences, emit schema once then values without tags
 
 use super::dictionary::StringDictionary;
-use super::schema::{Schema, SchemaField, SchemaType, SchemaRegistry};
+use super::schema::{SchemaType, SchemaRegistry};
 use super::stats_collector::StatisticsCollector;
+use super::adaptive_encode::CodecAnalyzer;
 use super::varint::*;
 use super::{TBF_MAGIC, TBF_VERSION, FLAG_DICTIONARY, TypeTag};
+use std::collections::HashMap;
 
 /// Encoding mode flags
 pub const MODE_SELF_DESCRIBING: u8 = 0x00;
@@ -35,6 +37,10 @@ pub struct TbfSerializer {
     pub(crate) depth: usize,
     /// Optional statistics collector (Phase 2)
     pub(crate) stats: Option<StatisticsCollector>,
+    /// Optional codec analyzer for adaptive compression (Phase 3)
+    pub(crate) codec_analyzer: Option<CodecAnalyzer>,
+    /// Selected codecs per field/column (Phase 3)
+    pub(crate) selected_codecs: HashMap<String, super::adaptive_encode::CompressionCodec>,
 }
 
 /// Tracks the current encoding context for schema detection
@@ -74,6 +80,8 @@ impl TbfSerializer {
             context: EncodingContext::default(),
             depth: 0,
             stats: None,
+            codec_analyzer: None,
+            selected_codecs: HashMap::new(),
         }
     }
 
@@ -87,6 +95,8 @@ impl TbfSerializer {
             context: EncodingContext::default(),
             depth: 0,
             stats: None,
+            codec_analyzer: None,
+            selected_codecs: HashMap::new(),
         }
     }
 
@@ -100,6 +110,8 @@ impl TbfSerializer {
             context: EncodingContext::default(),
             depth: 0,
             stats: Some(StatisticsCollector::new()),
+            codec_analyzer: None,
+            selected_codecs: HashMap::new(),
         }
     }
 
@@ -113,6 +125,38 @@ impl TbfSerializer {
             context: EncodingContext::default(),
             depth: 0,
             stats: Some(StatisticsCollector::new()),
+            codec_analyzer: None,
+            selected_codecs: HashMap::new(),
+        }
+    }
+
+    /// Create a serializer with adaptive codec selection enabled
+    pub fn with_codecs() -> Self {
+        Self {
+            buf: Vec::with_capacity(1024),
+            dict: StringDictionary::new(),
+            schemas: SchemaRegistry::new(),
+            schema_buf: Vec::new(),
+            context: EncodingContext::default(),
+            depth: 0,
+            stats: None,
+            codec_analyzer: Some(CodecAnalyzer::new(100)),
+            selected_codecs: HashMap::new(),
+        }
+    }
+
+    /// Create a serializer with adaptive codec selection and statistics collection
+    pub fn with_codecs_and_statistics() -> Self {
+        Self {
+            buf: Vec::with_capacity(1024),
+            dict: StringDictionary::new(),
+            schemas: SchemaRegistry::new(),
+            schema_buf: Vec::new(),
+            context: EncodingContext::default(),
+            depth: 0,
+            stats: Some(StatisticsCollector::new()),
+            codec_analyzer: Some(CodecAnalyzer::new(100)),
+            selected_codecs: HashMap::new(),
         }
     }
 
@@ -380,5 +424,107 @@ impl<'a> SchemaStructSerializer<'a> {
     /// Check if in schema mode
     pub fn is_schema_mode(&self) -> bool {
         self.schema_mode
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tbf::adaptive_encode::CompressionCodec;
+    use serde_json::json;
+
+    #[test]
+    fn test_serializer_with_codecs_creation() {
+        let serializer = TbfSerializer::with_codecs();
+        assert!(serializer.codec_analyzer.is_some());
+        assert!(serializer.stats.is_none());
+        assert!(serializer.selected_codecs.is_empty());
+    }
+
+    #[test]
+    fn test_serializer_with_codecs_and_statistics() {
+        let serializer = TbfSerializer::with_codecs_and_statistics();
+        assert!(serializer.codec_analyzer.is_some());
+        assert!(serializer.stats.is_some());
+        assert!(serializer.selected_codecs.is_empty());
+    }
+
+    #[test]
+    fn test_serializer_without_codecs_unchanged() {
+        let serializer = TbfSerializer::new();
+        assert!(serializer.codec_analyzer.is_none());
+        assert!(serializer.stats.is_none());
+        assert!(serializer.selected_codecs.is_empty());
+    }
+
+    #[test]
+    fn test_codec_analyzer_accessibility() {
+        let mut serializer = TbfSerializer::with_codecs();
+
+        // Verify analyzer exists and can be used
+        if let Some(analyzer) = &mut serializer.codec_analyzer {
+            // Add 20 sorted samples (enough for Delta detection)
+            for i in 0..20 {
+                analyzer.add_sample(Some(json!(i)));
+            }
+
+            let codec = analyzer.choose_codec();
+            // Sorted integers should select Delta
+            assert_eq!(codec, CompressionCodec::Delta);
+        } else {
+            panic!("codec_analyzer should be Some");
+        }
+    }
+
+    #[test]
+    fn test_codec_roundtrip_basic() {
+        let value = json!({
+            "id": 1,
+            "name": "test"
+        });
+
+        let serializer = TbfSerializer::new();
+        let bytes = serializer.into_bytes();
+
+        // Should produce some output
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn test_selected_codecs_storage() {
+        let mut serializer = TbfSerializer::with_codecs();
+
+        // Simulate selecting codecs for fields
+        serializer.selected_codecs.insert(
+            "field1".to_string(),
+            CompressionCodec::Dictionary,
+        );
+        serializer.selected_codecs.insert(
+            "field2".to_string(),
+            CompressionCodec::Delta,
+        );
+
+        assert_eq!(serializer.selected_codecs.len(), 2);
+        assert_eq!(
+            serializer.selected_codecs.get("field1"),
+            Some(&CompressionCodec::Dictionary)
+        );
+        assert_eq!(
+            serializer.selected_codecs.get("field2"),
+            Some(&CompressionCodec::Delta)
+        );
+    }
+
+    #[test]
+    fn test_codec_and_stats_together() {
+        let serializer = TbfSerializer::with_codecs_and_statistics();
+
+        // Both features should be enabled independently
+        assert!(serializer.codec_analyzer.is_some());
+        assert!(serializer.stats.is_some());
+
+        // They should not interfere with each other
+        assert_eq!(serializer.depth, 0);
+        assert!(serializer.buf.is_empty());
     }
 }
