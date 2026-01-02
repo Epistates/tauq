@@ -220,3 +220,124 @@ pub unsafe extern "C" fn tauq_free_string(s: *mut c_char) {
         let _ = unsafe { CString::from_raw(s) };
     }
 }
+
+/// Convert JSON/Tauq string to TBF bytes.
+/// Returns pointer to bytes, sets out_len to length.
+/// Result must be freed with `tauq_free_buffer`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tauq_to_tbf(input: *const c_char, out_len: *mut usize) -> *mut u8 {
+    if input.is_null() || out_len.is_null() {
+        set_error("Input pointer or out_len is null".to_string());
+        return std::ptr::null_mut();
+    }
+    
+    let c_str = unsafe { CStr::from_ptr(input) };
+    let str_slice = match c_str.to_str() {
+        Ok(s) => s,
+        Err(e) => {
+            set_error(format!("Invalid UTF-8 in input: {}", e));
+            return std::ptr::null_mut();
+        }
+    };
+
+    // Auto-detect JSON vs Tauq
+    let json_val = if str_slice.trim_start().starts_with('{') || str_slice.trim_start().starts_with('[') {
+        match serde_json::from_str(str_slice) {
+            Ok(v) => v,
+            Err(e) => {
+                set_error(format!("JSON parse error: {}", e));
+                return std::ptr::null_mut();
+            }
+        }
+    } else {
+        match compile_tauq(str_slice) {
+            Ok(v) => v,
+            Err(e) => {
+                set_error(format!("Tauq parse error: {}", e));
+                return std::ptr::null_mut();
+            }
+        }
+    };
+
+    match crate::tbf::encode_json(&json_val) {
+        Ok(vec) => {
+            let mut buf = vec.into_boxed_slice();
+            let ptr = buf.as_mut_ptr();
+            let len = buf.len();
+            std::mem::forget(buf);
+            unsafe { *out_len = len };
+            ptr
+        },
+        Err(e) => {
+            set_error(format!("TBF encode error: {}", e));
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// Convert TBF bytes to JSON string.
+/// Caller must free result with `tauq_free_string`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tauq_tbf_to_json(data: *const u8, len: usize) -> *mut c_char {
+    if data.is_null() || len == 0 {
+        set_error("Invalid data pointer or length".to_string());
+        return std::ptr::null_mut();
+    }
+    
+    let slice = unsafe { std::slice::from_raw_parts(data, len) };
+    
+    match crate::tbf::decode(slice) {
+        Ok(json_val) => {
+            let json_str = json_val.to_string();
+            match CString::new(json_str) {
+                Ok(c) => c.into_raw(),
+                Err(e) => {
+                    set_error(format!("Nul byte in output: {}", e));
+                    std::ptr::null_mut()
+                }
+            }
+        },
+        Err(e) => {
+            set_error(format!("TBF decode error: {}", e));
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// Convert TBF bytes to Tauq string.
+/// Caller must free result with `tauq_free_string`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tauq_tbf_to_tauq(data: *const u8, len: usize) -> *mut c_char {
+    if data.is_null() || len == 0 {
+        set_error("Invalid data pointer or length".to_string());
+        return std::ptr::null_mut();
+    }
+    
+    let slice = unsafe { std::slice::from_raw_parts(data, len) };
+    
+    match crate::tbf::decode_to_tauq(slice) {
+        Ok(tauq_str) => {
+            match CString::new(tauq_str) {
+                Ok(c) => c.into_raw(),
+                Err(e) => {
+                    set_error(format!("Nul byte in output: {}", e));
+                    std::ptr::null_mut()
+                }
+            }
+        },
+        Err(e) => {
+            set_error(format!("TBF decode error: {}", e));
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// Free a buffer returned by tauq_to_tbf.
+/// Must pass the exact length returned by the allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn tauq_free_buffer(ptr: *mut u8, len: usize) {
+    if !ptr.is_null() && len > 0 {
+        let slice = unsafe { std::slice::from_raw_parts_mut(ptr, len) };
+        let _ = unsafe { Box::from_raw(slice) };
+    }
+}

@@ -32,7 +32,7 @@ pub struct NullBitmap {
 impl NullBitmap {
     /// Create a new bitmap with capacity for `capacity` values
     pub fn new(capacity: usize) -> Self {
-        let bytes_needed = (capacity + 7) / 8;
+        let bytes_needed = capacity.div_ceil(8);
         Self {
             bits: vec![0; bytes_needed],
             len: 0,
@@ -107,7 +107,7 @@ impl NullBitmap {
         let total_bits = self.len;
         let set_bits: usize = self.bits
             .iter()
-            .take((self.len + 7) / 8)
+            .take(self.len.div_ceil(8))
             .map(|b| b.count_ones() as usize)
             .sum();
         total_bits - set_bits
@@ -131,7 +131,7 @@ impl NullBitmap {
         encode_varint(self.len as u64, &mut buffer);
 
         // Encode bitmap (only include bytes that are needed)
-        let bytes_needed = (self.len + 7) / 8;
+        let bytes_needed = self.len.div_ceil(8);
         buffer.extend_from_slice(&self.bits[..bytes_needed]);
 
         buffer
@@ -142,7 +142,7 @@ impl NullBitmap {
         let (len, varint_size) = decode_varint(bytes)?;
         let len = len as usize;
 
-        let bytes_needed = (len + 7) / 8;
+        let bytes_needed = len.div_ceil(8);
         if bytes.len() < varint_size + bytes_needed {
             return Err(TauqError::Interpret(
                 InterpretError::new("Not enough bytes to decode null bitmap"),
@@ -162,13 +162,13 @@ impl NullBitmap {
 
     /// Get reference to raw bitmap bytes
     pub fn as_bytes(&self) -> &[u8] {
-        let bytes_needed = (self.len + 7) / 8;
+        let bytes_needed = self.len.div_ceil(8);
         &self.bits[..bytes_needed]
     }
 
     /// Get mutable reference to raw bitmap bytes
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        let bytes_needed = (self.len + 7) / 8;
+        let bytes_needed = self.len.div_ceil(8);
         self.bits.resize(bytes_needed, 0);
         &mut self.bits[..bytes_needed]
     }
@@ -181,7 +181,7 @@ impl NullBitmap {
 
     /// Fast path: check if any nulls exist
     pub fn has_nulls(&self) -> bool {
-        let bytes_needed = (self.len + 7) / 8;
+        let bytes_needed = self.len.div_ceil(8);
         for byte in &self.bits[..bytes_needed] {
             // If not all bits are set to 1 (0xFF), there's at least one null
             if *byte != 0xFF {
@@ -200,7 +200,7 @@ impl NullBitmap {
     }
 
     /// Iterate over null/not-null values
-    pub fn iter(&self) -> NullBitmapIter {
+    pub fn iter(&self) -> NullBitmapIter<'_> {
         NullBitmapIter {
             bitmap: self,
             idx: 0,

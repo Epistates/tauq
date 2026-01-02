@@ -8,27 +8,37 @@ use std::path::Path;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+/// Field definition in a schema
 #[derive(Debug, Clone)]
 pub struct FieldDef {
+    /// Name of the field
     pub name: String,
+    /// Type definition for the field
     pub type_def: TypeDef,
 }
 
+/// Type definition for schema fields
 #[derive(Debug, Clone)]
 pub enum TypeDef {
+    /// scalar value (number, string, bool, null)
     Scalar,
+    /// Nested object with named schema
     Object(String),
+    /// List of objects with named schema
     List(String),
 }
 
+/// Parser context holding schema definitions
 #[derive(Clone)]
 pub struct Context {
+    /// Map of schema names to field definitions
     pub shapes: Rc<RefCell<HashMap<String, Vec<FieldDef>>>>,
     /// Base directory for resolving relative imports
     pub base_dir: Option<std::path::PathBuf>,
 }
 
 impl Context {
+    /// Create a new empty context
     pub fn new() -> Self {
         Self {
             shapes: Rc::new(RefCell::new(HashMap::new())),
@@ -36,6 +46,7 @@ impl Context {
         }
     }
 
+    /// Create a context with a base directory for imports
     pub fn with_base_dir(base_dir: std::path::PathBuf) -> Self {
         Self {
             shapes: Rc::new(RefCell::new(HashMap::new())),
@@ -114,6 +125,7 @@ impl<'a> Parser<'a> {
             .unwrap_or(false)
     }
 
+    /// Parse the source into a JSON Value
     pub fn parse(&mut self) -> Result<Value, ParseError> {
         let mut result = Vec::new();
         let mut pending_map = Map::new();
@@ -666,19 +678,19 @@ impl<'a> Parser<'a> {
                     Token::Directive(d) if d == "use" => {
                         // !use SchemaName inside array - sets schema for subsequent elements
                         self.advance(); // Skip !use
-                        if let Some(st2) = &self.current_token {
-                            if let Token::Ident(shape_name) = &st2.token {
-                                let shape_name = shape_name.clone();
-                                if !self.context.shapes.borrow().contains_key(&shape_name) {
-                                    return Err(self.make_error(format!(
-                                        "!use references undefined schema '{}' in array",
-                                        shape_name
-                                    )));
-                                }
-                                array_shape = Some(shape_name);
-                                self.advance(); // Skip schema name
-                                continue;
+                        if let Some(st2) = &self.current_token
+                            && let Token::Ident(shape_name) = &st2.token
+                        {
+                            let shape_name = shape_name.clone();
+                            if !self.context.shapes.borrow().contains_key(&shape_name) {
+                                return Err(self.make_error(format!(
+                                    "!use references undefined schema '{}' in array",
+                                    shape_name
+                                )));
                             }
+                            array_shape = Some(shape_name);
+                            self.advance(); // Skip schema name
+                            continue;
                         }
                         return Err(self.make_error("!use in array requires a schema name"));
                     }

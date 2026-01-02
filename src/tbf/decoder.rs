@@ -30,7 +30,7 @@ impl<'de> TbfDeserializer<'de> {
         }
 
         // Verify magic
-        if &data[0..4] != &TBF_MAGIC {
+        if data[0..4] != TBF_MAGIC {
             return Err(TauqError::Interpret(InterpretError::new(
                 "Invalid TBF magic bytes".to_string(),
             )));

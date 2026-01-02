@@ -7,7 +7,7 @@
 //! - Minimized allocations
 
 use ahash::RandomState;
-use std::hash::{BuildHasher, Hash, Hasher};
+
 
 // =============================================================================
 // Fast String Dictionary
@@ -46,9 +46,7 @@ impl FastStringDictionary {
     /// Hash a string using ahash
     #[inline(always)]
     fn hash_str(&self, s: &str) -> u64 {
-        let mut hasher = self.hash_builder.build_hasher();
-        s.hash(&mut hasher);
-        hasher.finish()
+        self.hash_builder.hash_one(s)
     }
 
     /// Intern a string - returns index (ultra-fast path)

@@ -10,7 +10,6 @@
 
 use crate::error::TauqError;
 use serde_json::Value;
-use std::collections::HashMap;
 
 /// Codec for encoding values
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +25,7 @@ pub enum CompressionCodec {
 }
 
 impl CompressionCodec {
+    /// Convert byte to CompressionCodec variant
     pub fn from_u8(v: u8) -> Option<Self> {
         match v {
             0 => Some(CompressionCodec::Raw),
@@ -160,13 +160,14 @@ impl CodecAnalyzer {
             return false;
         }
 
-        // Count unique values
-        let mut unique = HashMap::new();
-        for v in values {
-            *unique.entry(v.to_string()).or_insert(0) += 1;
+        // Count unique values and their frequencies
+        let mut unique_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        // First pass: collect unique values to check cardinality
+        for val in values {
+            *unique_counts.entry(val.to_string()).or_insert(0) += 1;
         }
 
-        let cardinality = unique.len();
+        let cardinality = unique_counts.len();
         let max_cardinality = (values.len() / 4).max(10); // 25% max cardinality
 
         // Dictionary is beneficial if:
@@ -177,8 +178,7 @@ impl CodecAnalyzer {
         }
 
         // Check for repetition
-        let has_repetition = unique.values().any(|&count| count > 1);
-        has_repetition
+        unique_counts.values().any(|&count| count > 1)
     }
 
     /// Get analysis of current samples (for testing/debugging)
@@ -192,10 +192,9 @@ impl CodecAnalyzer {
 
     fn count_unique_values(&self) -> usize {
         let mut unique = std::collections::HashSet::new();
-        for v in &self.samples {
-            if let Some(val) = v {
-                unique.insert(val.to_string());
-            }
+        // First pass: collect unique values to check cardinality
+        for val in self.samples.iter().flatten() {
+            unique.insert(val.to_string());
         }
         unique.len()
     }
@@ -204,8 +203,11 @@ impl CodecAnalyzer {
 /// Analysis results
 #[derive(Debug, Clone)]
 pub struct CodecAnalysis {
+    /// Total number of samples collected
     pub sample_count: usize,
+    /// Number of null/None values seen
     pub null_count: usize,
+    /// Number of unique values seen
     pub unique_values: usize,
 }
 
@@ -341,11 +343,12 @@ impl RLEEncoder {
 
     /// Encode a value with RLE
     pub fn encode(&mut self, value: &Value) {
-        if let Some(last) = self.runs.last_mut() {
-            if last.value == *value {
-                last.count += 1;
-                return;
-            }
+        // Check if same as last run
+        if let Some(last) = self.runs.last_mut()
+            && last.value == *value
+        {
+            last.count += 1;
+            return;
         }
 
         self.runs.push(RunLengthValue {

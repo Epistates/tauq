@@ -74,10 +74,10 @@ impl StringDictionary {
     pub fn intern_owned(&mut self, s: String) -> u32 {
         let hash = Self::hash_str(&s);
 
-        if let Some(&idx) = self.index.get(&hash) {
-            if self.strings[idx as usize] == s {
-                return idx;
-            }
+        if let Some(&idx) = self.index.get(&hash)
+            && self.strings[idx as usize] == s
+        {
+            return idx;
         }
 
         let idx = self.strings.len() as u32;

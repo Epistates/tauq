@@ -60,6 +60,7 @@ impl<'a> Lexer<'a> {
         self.chars.peek()
     }
 
+    /// Get the next token from the input
     pub fn next_token(&mut self) -> Option<SpannedToken> {
         self.skip_whitespace();
 

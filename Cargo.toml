@@ -42,7 +42,7 @@ thiserror = "2.0"
 pyo3 = { version = "0.20", features = ["extension-module"], optional = true }
 rhai = { version = "1.19", optional = true, features = ["serde"] }
 tempfile = "3.8"
-ahash = "0.8"
+ahash = "=0.8.11"
 jni = { version = "0.21", optional = true }
 tower-lsp = { version = "0.20.0", optional = true }
 tokio = { version = "1.48.0", features = ["full"], optional = true }
@@ -88,3 +88,6 @@ harness = false
 [[bench]]
 name = "compression_real_data"
 harness = false
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }

@@ -10,7 +10,6 @@
 //! TBF's excellent compression ratio.
 
 use std::marker::PhantomData;
-use std::mem::MaybeUninit;
 
 // =============================================================================
 // UltraBuffer - Pointer-based buffer with unchecked operations
@@ -82,7 +81,7 @@ impl UltraBuffer {
     /// Current length
     #[inline(always)]
     pub fn len(&self) -> usize {
-        (self.end as usize - self.start as usize)
+        self.end as usize - self.start as usize
     }
 
     /// Check if empty
@@ -94,13 +93,13 @@ impl UltraBuffer {
     /// Current capacity
     #[inline(always)]
     pub fn capacity(&self) -> usize {
-        (self.capacity as usize - self.start as usize)
+        self.capacity as usize - self.start as usize
     }
 
     /// Remaining capacity
     #[inline(always)]
     pub fn remaining(&self) -> usize {
-        (self.capacity as usize - self.end as usize)
+        self.capacity as usize - self.end as usize
     }
 
     /// Get slice of written data
@@ -156,8 +155,10 @@ impl UltraBuffer {
     #[inline(always)]
     pub unsafe fn push_unchecked(&mut self, byte: u8) {
         debug_assert!(self.end < self.capacity);
-        std::ptr::write(self.end, byte);
-        self.end = self.end.add(1);
+        unsafe {
+            std::ptr::write(self.end, byte);
+            self.end = self.end.add(1);
+        }
     }
 
     /// Push slice - UNCHECKED
@@ -167,8 +168,10 @@ impl UltraBuffer {
     #[inline(always)]
     pub unsafe fn extend_unchecked(&mut self, bytes: &[u8]) {
         debug_assert!(self.remaining() >= bytes.len());
-        std::ptr::copy_nonoverlapping(bytes.as_ptr(), self.end, bytes.len());
-        self.end = self.end.add(bytes.len());
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), self.end, bytes.len());
+            self.end = self.end.add(bytes.len());
+        }
     }
 
     /// Push single byte - checked (reserves if needed)
@@ -210,9 +213,13 @@ impl UltraBuffer {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum IntPacking {
+    /// 64-bit integer packing (0)
     Bits64 = 0,
+    /// 32-bit integer packing (1)
     Bits32 = 1,
+    /// 16-bit integer packing (2)
     Bits16 = 2,
+    /// 8-bit integer packing (3)
     Bits8 = 3,
 }
 
@@ -593,16 +600,19 @@ pub struct DirectU32Encoder {
 }
 
 impl DirectU32Encoder {
+    /// Create a new encoder with specified capacity
     #[inline]
     pub fn with_capacity(cap: usize) -> Self {
         Self { values: Vec::with_capacity(cap) }
     }
 
+    /// Push a u32 value to the encoder
     #[inline(always)]
     pub fn push(&mut self, value: u32) {
         self.values.push(value);
     }
 
+    /// Encode values to the destination buffer
     pub fn encode_to(&self, buf: &mut UltraBuffer) {
         buf.push(ColumnType::U32 as u8);
         pack_u32_adaptive(&self.values, buf);
@@ -616,6 +626,7 @@ pub struct DirectStringEncoder {
 }
 
 impl DirectStringEncoder {
+    /// Create a new encoder with specified capacity
     #[inline]
     pub fn with_capacity(cap: usize) -> Self {
         Self {
@@ -624,6 +635,7 @@ impl DirectStringEncoder {
         }
     }
 
+    /// Push a string value to the encoder
     #[inline(always)]
     pub fn push(&mut self, s: &str) {
         let len = s.len();
@@ -644,6 +656,7 @@ impl DirectStringEncoder {
         self.count += 1;
     }
 
+    /// Encode collected strings to the destination buffer
     pub fn encode_to(self, buf: &mut UltraBuffer) {
         buf.push(ColumnType::String as u8);
         buf.extend(self.data.as_slice());
@@ -660,13 +673,21 @@ pub trait UltraEncodeDirect {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ColumnType {
+    /// Unsigned 32-bit integer
     U32 = 0,
+    /// Unsigned 64-bit integer
     U64 = 1,
+    /// Signed 32-bit integer
     I32 = 2,
+    /// Signed 64-bit integer
     I64 = 3,
+    /// 32-bit float
     F32 = 4,
+    /// 64-bit float
     F64 = 5,
+    /// Boolean
     Bool = 6,
+    /// String
     String = 7,
 }
 
@@ -677,13 +698,21 @@ pub struct ColumnCollectors {
 
 /// Data for a single column
 pub enum ColumnData {
+    /// Vector of u32 values
     U32(Vec<u32>),
+    /// Vector of u64 values
     U64(Vec<u64>),
+    /// Vector of i32 values
     I32(Vec<i32>),
+    /// Vector of i64 values
     I64(Vec<i64>),
+    /// Vector of f32 values
     F32(Vec<f32>),
+    /// Vector of f64 values
     F64(Vec<f64>),
+    /// Vector of boolean values
     Bool(Vec<bool>),
+    /// Vector of string values
     String(Vec<String>),
 }
 
@@ -859,8 +888,8 @@ fn encode_f64_column(values: &[f64], buf: &mut UltraBuffer) {
 
 /// Encode bool column (bit-packed, 8 bools per byte)
 fn encode_bool_column(values: &[bool], buf: &mut UltraBuffer) {
-    let packed_len = (values.len() + 7) / 8;
-    buf.reserve(packed_len);
+    let bytes_needed = values.len().div_ceil(8);
+    buf.reserve(bytes_needed);
 
     let chunks = values.chunks(8);
     for chunk in chunks {

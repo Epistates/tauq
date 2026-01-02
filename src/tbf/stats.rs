@@ -77,25 +77,23 @@ impl ColumnStats {
                 // Update min/max for orderable types
                 if self.min_value.is_none() {
                     self.min_value = Some(v.clone());
-                } else if let Some(min) = self.min_value.as_mut() {
-                    if json_value_lt(v, min) {
-                        *min = v.clone();
-                    }
+                } else if let Some(min) = self.min_value.as_mut()
+                    && json_value_lt(v, min)
+                {
+                    *min = v.clone();
                 }
 
                 if self.max_value.is_none() {
                     self.max_value = Some(v.clone());
-                } else if let Some(max) = self.max_value.as_mut() {
-                    if json_value_gt(v, max) {
-                        *max = v.clone();
-                    }
+                } else if let Some(max) = self.max_value.as_mut()
+                    && json_value_gt(v, max)
+                {
+                    *max = v.clone();
                 }
 
                 // Update cardinality (simple approximation)
                 // TODO: Use HyperLogLog for unbounded cardinality
-                if self.cardinality < u32::MAX {
-                    self.cardinality += 1;
-                }
+                self.cardinality = self.cardinality.saturating_add(1);
             }
             None => {
                 self.null_count += 1;

@@ -8,10 +8,7 @@
 //! Use when encoding large batches (1000+ items) where parallelization
 //! overhead is justified by speedup.
 
-use crate::error::{TauqError, InterpretError};
-
-#[cfg(feature = "performance")]
-use rayon::prelude::*;
+use crate::error::TauqError;
 
 /// Builder for parallel batch encoding
 ///

@@ -13,36 +13,26 @@
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Delimiter used between values in schema rows
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// Value delimiter type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Delimiter {
     /// Space-separated values (default): `1 Alice admin`
+    #[default]
     Space,
-    /// Comma-separated values (TOON-compatible density): `1,Alice,admin`
+    /// Comma-separated values: `1,Alice,admin`
     Comma,
 }
 
-impl Default for Delimiter {
-    fn default() -> Self {
-        Delimiter::Space
-    }
-}
-
 /// Strategy for when to use !def schema definitions
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SchemaStrategy {
     /// Automatically use !def when it reduces tokens (default)
+    #[default]
     Adaptive,
     /// Never use !def schemas (force inline key:value everywhere)
     Never,
     /// Always use !def when possible (for testing/debugging)
     Always,
-}
-
-impl Default for SchemaStrategy {
-    fn default() -> Self {
-        SchemaStrategy::Adaptive
-    }
 }
 
 /// Schema information collected during formatting
@@ -138,8 +128,8 @@ impl SchemaRegistry {
     }
 
     fn singularize(s: &str) -> String {
-        let singular = if s.ends_with("ies") {
-            format!("{}y", &s[..s.len() - 3])
+        let singular = if let Some(stripped) = s.strip_suffix("ies") {
+            format!("{}y", stripped)
         } else if s.ends_with('s') && !s.ends_with("ss") && s.len() > 1 {
             s[..s.len() - 1].to_string()
         } else {
@@ -182,6 +172,7 @@ impl SchemaRegistry {
     }
 }
 
+/// Formatter for converting JSON values to Tauq syntax
 pub struct Formatter {
     delimiter: Delimiter,
     minify: bool,
@@ -251,6 +242,7 @@ impl Formatter {
         Self::new().with_comma_delimiter().minified()
     }
 
+    /// Set the delimiter type
     pub fn with_delimiter(mut self, delimiter: Delimiter) -> Self {
         self.delimiter = delimiter;
         self
@@ -296,7 +288,7 @@ impl Formatter {
     }
 
     /// Collect schemas from nested arrays (first pass)
-    fn collect_schemas(&self, value: &Value, registry: &mut SchemaRegistry, context: Option<&str>) {
+    fn collect_schemas(&self, value: &Value, registry: &mut SchemaRegistry, _context: Option<&str>) {
         match value {
             Value::Object(obj) => {
                 for (key, val) in obj {
@@ -315,7 +307,7 @@ impl Formatter {
             }
             Value::Array(arr) => {
                 for item in arr {
-                    self.collect_schemas(item, registry, context);
+                    self.collect_schemas(item, registry, _context);
                 }
             }
             _ => {}

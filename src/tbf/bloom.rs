@@ -41,12 +41,12 @@ impl BloomFilter {
         let m = (-(num_items as f32) * ln_p) / ln2_sq;
 
         // Clamp to reasonable size
-        let num_bytes = ((m as usize).max(64) + 7) / 8; // At least 64 bytes
+        let num_bytes = (m as usize).max(64).div_ceil(8); // At least 64 bytes
         let num_bits = num_bytes * 8;
 
         // k = m/n * ln(2)  (optimal number of hash functions)
         let k = (num_bits as f32 / (num_items as f32)) * std::f32::consts::LN_2;
-        let hash_functions = (k.round() as u8).max(1).min(4); // Use 1-4 hash functions
+        let hash_functions = (k.round() as u8).clamp(1, 4); // Use 1-4 hash functions
 
         Self {
             bits: vec![0; num_bytes],

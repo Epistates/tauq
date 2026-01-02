@@ -58,6 +58,7 @@ pub enum ColumnEncoding {
 }
 
 impl ColumnEncoding {
+    /// Convert byte to ColumnEncoding variant
     pub fn from_u8(v: u8) -> Option<Self> {
         match v {
             0 => Some(ColumnEncoding::Raw),
@@ -73,22 +74,36 @@ impl ColumnEncoding {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ColumnType {
+    /// Boolean (0x01)
     Bool = 1,
+    /// Signed 8-bit integer (0x02)
     I8 = 2,
+    /// Signed 16-bit integer (0x03)
     I16 = 3,
+    /// Signed 32-bit integer (0x04)
     I32 = 4,
+    /// Signed 64-bit integer (0x05)
     I64 = 5,
+    /// Unsigned 8-bit integer (0x06)
     U8 = 6,
+    /// Unsigned 16-bit integer (0x07)
     U16 = 7,
+    /// Unsigned 32-bit integer (0x08)
     U32 = 8,
+    /// Unsigned 64-bit integer (0x09)
     U64 = 9,
+    /// 32-bit Float (0x0A)
     F32 = 10,
+    /// 64-bit Float (0x0B)
     F64 = 11,
+    /// UTF-8 String (0x0C)
     String = 12,
+    /// Byte Array (0x0D)
     Bytes = 13,
 }
 
 impl ColumnType {
+    /// Convert byte to ColumnType variant
     pub fn from_u8(v: u8) -> Option<Self> {
         match v {
             1 => Some(ColumnType::Bool),

@@ -6,7 +6,7 @@
 //! - Range-based filtering (skip rows outside value range)
 //! - Cardinality-aware filtering
 
-use serde_json::{json, Value};
+use serde_json::Value;
 use super::stats::ColumnStats;
 
 /// Comparison predicate for filtering
@@ -184,10 +184,10 @@ impl QueryFilter {
     /// Check if all predicates match the row
     pub fn matches_row(&self, row: &[(u32, Option<Value>)]) -> bool {
         for (col_id, value) in row {
-            if let Some(predicate) = self.predicates.get(col_id) {
-                if !predicate.matches(value.as_ref()) {
-                    return false;
-                }
+            if let Some(predicate) = self.predicates.get(col_id)
+                && !predicate.matches(value.as_ref())
+            {
+                return false;
             }
         }
         true
@@ -211,10 +211,10 @@ impl QueryFilter {
         let mut skippable = Vec::new();
 
         for (col_id, col_stats) in stats {
-            if let Some(predicate) = self.predicates.get(col_id) {
-                if predicate.can_skip_column(col_stats) {
-                    skippable.push(*col_id);
-                }
+            if let Some(predicate) = self.predicates.get(col_id)
+                && predicate.can_skip_column(col_stats)
+            {
+                skippable.push(*col_id);
             }
         }
 

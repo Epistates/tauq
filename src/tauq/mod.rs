@@ -1,8 +1,14 @@
+/// Formatter for converting JSON to Tauq
 pub mod formatter;
+/// Lexer for tokenizing Tauq source
 pub mod lexer;
+/// Parser for Tauq source
 pub mod parser;
+/// Streaming parser for efficient row-by-row processing
 pub mod streaming;
+/// Legacy Tauq Query module (deprecated)
 pub mod tauqq;
+/// Token definitions for Tauq lexer/parser
 pub mod token;
 
 pub use formatter::{

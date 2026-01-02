@@ -43,3 +43,33 @@ pub fn to_json(input: &str) -> Result<String, JsValue> {
     serde_json::to_string(&json_val)
         .map_err(|e| JsValue::from_str(&format!("JSON Serialize Error: {}", e)))
 }
+
+#[wasm_bindgen]
+pub fn to_tbf(input: &str) -> Result<Box<[u8]>, JsValue> {
+    // Auto-detect
+    let json_val = if input.trim_start().starts_with('{') || input.trim_start().starts_with('[') {
+        serde_json::from_str(input).map_err(|e| JsValue::from_str(&format!("JSON Parse Error: {}", e)))?
+    } else {
+        compile_tauq(input).map_err(|e| JsValue::from_str(&format!("Tauq Parse Error: {}", e)))?
+    };
+
+    let bytes = tauq::tbf::encode_json(&json_val)
+        .map_err(|e| JsValue::from_str(&format!("TBF Encode Error: {}", e)))?;
+        
+    Ok(bytes.into_boxed_slice())
+}
+
+#[wasm_bindgen]
+pub fn from_tbf(data: &[u8]) -> Result<String, JsValue> {
+    let json_val = tauq::tbf::decode(data)
+        .map_err(|e| JsValue::from_str(&format!("TBF Decode Error: {}", e)))?;
+        
+    serde_json::to_string(&json_val)
+        .map_err(|e| JsValue::from_str(&format!("JSON Serialize Error: {}", e)))
+}
+
+#[wasm_bindgen]
+pub fn tbf_to_tauq(data: &[u8]) -> Result<String, JsValue> {
+    tauq::tbf::decode_to_tauq(data)
+        .map_err(|e| JsValue::from_str(&format!("TBF Decode Error: {}", e)))
+}

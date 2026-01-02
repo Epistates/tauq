@@ -139,7 +139,7 @@ impl CodecEncodingContext {
     pub fn get_codec_metadata(&self) -> CodecMetadata {
         match self.selected_codec {
             Some(CompressionCodec::Delta) => {
-                if let Some(encoder) = &self.delta_encoder {
+                if let Some(_encoder) = &self.delta_encoder {
                     // For delta, store the initial base value
                     CodecMetadata::Delta {
                         initial_value: 0i64,
@@ -169,9 +169,15 @@ pub enum CodecMetadata {
     /// No codec or raw encoding
     None,
     /// Delta encoding with initial value
-    Delta { initial_value: i64 },
+    Delta {
+        /// The initial base value for delta compression
+        initial_value: i64
+    },
     /// Dictionary encoding with size
-    Dictionary { dictionary_size: u32 },
+    Dictionary {
+        /// Number of entries in the dictionary
+        dictionary_size: u32
+    },
     /// Run-length encoding (no additional metadata needed)
     RLE,
 }

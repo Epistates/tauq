@@ -103,11 +103,20 @@ pub enum FieldEncoding {
 
     /// Unsigned 8-bit with offset: value - offset stored as u8
     /// Example: age with offset 18 stores 18-273 as 0-255
-    U8Offset { offset: i64 },
+    U8Offset { 
+        /// Base value to subtract before encoding
+        offset: i64 
+    },
     /// Unsigned 16-bit with offset
-    U16Offset { offset: i64 },
+    U16Offset { 
+        /// Base value to subtract before encoding
+        offset: i64 
+    },
     /// Unsigned 32-bit with offset
-    U32Offset { offset: i64 },
+    U32Offset { 
+        /// Base value to subtract before encoding
+        offset: i64 
+    },
 
     // =========================================================================
     // Ranged/Compact encodings
@@ -675,7 +684,7 @@ impl AdaptiveStringEncoder {
             let dict_size = self.dict_strings.len();
             if dict_size <= 16 {
                 // 4-bit indices (packed)
-                let packed_len = (self.indices.len() + 1) / 2;
+                let packed_len = self.indices.len().div_ceil(2);
                 buf.reserve(packed_len);
                 for chunk in self.indices.chunks(2) {
                     let byte = (chunk[0] as u8) | ((chunk.get(1).copied().unwrap_or(0) as u8) << 4);

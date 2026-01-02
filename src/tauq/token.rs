@@ -1,31 +1,51 @@
+/// Token types for Tauq lexer
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    Directive(String), // !def, !use
+    /// Directive (e.g. `!def`, `!use`)
+    Directive(String),
+    /// Identifier
     Ident(String),
+    /// String literal
     String(String),
+    /// Numeric literal
     Number(f64),
+    /// Boolean literal
     Bool(bool),
+    /// Null literal
     Null,
-    TripleDash, // ---
-    Colon,      // :
-    Semi,       // ;
+    /// Triple dash separator `---`
+    TripleDash, 
+    /// Colon separator `:`
+    Colon,
+    /// Semicolon separator `;`
+    Semi,
+    /// Newline separator
     Newline,
+    /// Left brace `{`
     LBrace,
+    /// Right brace `}`
     RBrace,
-    LBracket, // [
-    RBracket, // ]
+    /// Left bracket `[`
+    LBracket,
+    /// Right bracket `]`
+    RBracket,
+    /// End of file
     Eof,
 }
 
 /// Source location for error reporting
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Location {
-    pub line: usize,   // 1-based line number
-    pub column: usize, // 1-based column number
-    pub offset: usize, // byte offset from start
+    /// 1-based line number
+    pub line: usize,
+    /// 1-based column number
+    pub column: usize,
+    /// byte offset from start
+    pub offset: usize,
 }
 
 impl Location {
+    /// Create a new location
     pub fn new(line: usize, column: usize, offset: usize) -> Self {
         Self {
             line,
@@ -35,9 +55,13 @@ impl Location {
     }
 }
 
+/// A token with its source location
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpannedToken {
+    /// The token definition
     pub token: Token,
+    /// Start location of the token
     pub start: Location,
+    /// End location of the token
     pub end: Location,
 }

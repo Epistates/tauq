@@ -331,7 +331,7 @@ impl<'a> FastBorrowedDictionary<'a> {
     #[inline(always)]
     pub unsafe fn get_unchecked(&self, idx: u32) -> &'a str {
         // SAFETY: Caller guarantees idx < self.len()
-        unsafe { *self.strings.get_unchecked(idx as usize) }
+        unsafe { self.strings.get_unchecked(idx as usize) }
     }
 
     /// Number of strings

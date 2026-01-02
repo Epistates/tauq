@@ -147,34 +147,59 @@ pub const FLAG_CODEC_METADATA: u8 = 0x04;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TypeTag {
+    /// Null value (0x00)
     Null = 0,
+    /// Boolean value (0x01)
     Bool = 1,
+    /// Integer value (0x02)
     Int = 2,
+    /// Floating point value (0x03)
     Float = 3,
+    /// UTF-8 string (0x04)
     String = 4,
+    /// Byte array (0x05)
     Bytes = 5,
+    /// Sequence/Array (0x06)
     Seq = 6,
+    /// Map/Object (0x07)
     Map = 7,
     // Extended tags
+    /// Unit type (0x08)
     Unit = 8,
+    /// Option::None (0x09)
     None = 9,
+    /// Option::Some (0x0A)
     Some = 10,
+    /// Signed 8-bit integer (0x0B)
     I8 = 11,
+    /// Signed 16-bit integer (0x0C)
     I16 = 12,
+    /// Signed 32-bit integer (0x0D)
     I32 = 13,
+    /// Signed 64-bit integer (0x0E)
     I64 = 14,
+    /// Signed 128-bit integer (0x0F)
     I128 = 15,
+    /// Unsigned 8-bit integer (0x10)
     U8 = 16,
+    /// Unsigned 16-bit integer (0x11)
     U16 = 17,
+    /// Unsigned 32-bit integer (0x12)
     U32 = 18,
+    /// Unsigned 64-bit integer (0x13)
     U64 = 19,
+    /// Unsigned 128-bit integer (0x14)
     U128 = 20,
+    /// 32-bit Float (0x15)
     F32 = 21,
+    /// 64-bit Float (0x16)
     F64 = 22,
+    /// Character (0x17)
     Char = 23,
 }
 
 impl TypeTag {
+    /// Convert byte to TypeTag variant
     pub fn from_u8(v: u8) -> Option<Self> {
         match v {
             0 => Some(TypeTag::Null),

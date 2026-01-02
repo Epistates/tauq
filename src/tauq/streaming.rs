@@ -36,6 +36,7 @@ pub struct StreamingParser<'a> {
 }
 
 impl<'a> StreamingParser<'a> {
+    /// Create a new streaming parser
     pub fn new(source: &'a str) -> Self {
         let mut lexer = Lexer::new(source);
         let current_token = lexer.next_token();

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // Tauq (τq) - Token-Efficient Data Notation
 //
 // Time constant meets charge density
@@ -24,17 +25,25 @@
 //! assert_eq!(json["name"], "Alice");
 //! ```
 
+/// Error types for Tauq
 pub mod error;
+/// Core Tauq parser and formatter
 pub mod tauq;
+/// Serde integration (optional)
 pub mod serde_support;
+/// Tauq Binary Format (TBF) - high-performance columnar storage
 pub mod tbf;
 
+/// C bindings for Tauq
 pub mod c_bindings;
 #[cfg(feature = "java-bindings")]
+/// Java bindings for Tauq
 pub mod java_bindings;
 #[cfg(feature = "python-bindings")]
+/// Python bindings for Tauq
 pub mod python_bindings;
 #[cfg(feature = "iceberg")]
+/// Iceberg table format integration for TBF
 pub mod tbf_iceberg;
 
 pub use error::TauqError;

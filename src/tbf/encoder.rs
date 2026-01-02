@@ -13,7 +13,9 @@ use super::{TBF_MAGIC, TBF_VERSION, FLAG_DICTIONARY, FLAG_CODEC_METADATA, TypeTa
 use std::collections::HashMap;
 
 /// Encoding mode flags
+/// Mode flag for self-describing values
 pub const MODE_SELF_DESCRIBING: u8 = 0x00;
+/// Mode flag for schema-based sequence encoding
 pub const MODE_SCHEMA: u8 = 0x01;
 
 /// Special marker for schema-encoded sequence
@@ -242,14 +244,14 @@ impl TbfSerializer {
         result.extend_from_slice(&self.buf);
 
         // Write statistics footer (Phase 2)
-        if let Some(stats) = self.stats {
-            if let Ok(stats_bytes) = stats.encode_all() {
-                // Store offset to footer for random access
-                let footer_offset = result.len() as u64;
-                result.extend_from_slice(&stats_bytes);
-                // Append footer offset (8 bytes, little-endian)
-                result.extend_from_slice(&footer_offset.to_le_bytes());
-            }
+        if let Some(stats) = self.stats
+            && let Ok(stats_bytes) = stats.encode_all()
+        {
+            // Store offset to footer for random access
+            let footer_offset = result.len() as u64;
+            result.extend_from_slice(&stats_bytes);
+            // Append footer offset (8 bytes, little-endian)
+            result.extend_from_slice(&footer_offset.to_le_bytes());
         }
 
         result
@@ -448,6 +450,7 @@ pub struct SchemaStructSerializer<'a> {
 }
 
 impl<'a> SchemaStructSerializer<'a> {
+    /// Create a new schema-aware struct serializer
     pub fn new(serializer: &'a mut TbfSerializer, schema_mode: bool) -> Self {
         let expected_types = if schema_mode {
             serializer.context.seq_schema.as_ref().map(|s| s.types.clone())
@@ -531,7 +534,7 @@ mod tests {
 
     #[test]
     fn test_codec_roundtrip_basic() {
-        let value = json!({
+        let _value = json!({
             "id": 1,
             "name": "test"
         });

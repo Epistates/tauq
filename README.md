@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/tauq?label=npm)](https://www.npmjs.com/package/tauq)
 [![PyPI](https://img.shields.io/pypi/v/tauq?label=pypi)](https://pypi.org/project/tauq/)
 [![Downloads](https://img.shields.io/crates/d/tauq?label=downloads)](https://crates.io/crates/tauq)
-[![Tests](https://img.shields.io/badge/tests-171_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-220_passing-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---

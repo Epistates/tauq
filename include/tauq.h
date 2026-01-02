@@ -50,6 +50,34 @@ char* json_to_tauq_c(const char* input);
  */
 void tauq_free_string(char* s);
 
+/**
+ * Convert JSON or Tauq string to TBF bytes.
+ * Returns pointer to bytes. Sets *out_len to length of bytes.
+ * Returns NULL on error.
+ * Caller must free result with tauq_free_buffer(ptr, len).
+ */
+unsigned char* tauq_to_tbf(const char* input, size_t* out_len);
+
+/**
+ * Convert TBF bytes to JSON string.
+ * Returns NULL on error.
+ * Caller must free result with tauq_free_string.
+ */
+char* tauq_tbf_to_json(const unsigned char* data, size_t len);
+
+/**
+ * Convert TBF bytes to Tauq string.
+ * Returns NULL on error.
+ * Caller must free result with tauq_free_string.
+ */
+char* tauq_tbf_to_tauq(const unsigned char* data, size_t len);
+
+/**
+ * Free buffer returned by tauq_to_tbf.
+ * Requires the length that was returned.
+ */
+void tauq_free_buffer(unsigned char* ptr, size_t len);
+
 #ifdef __cplusplus
 }
 #endif

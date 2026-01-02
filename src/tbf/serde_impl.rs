@@ -31,7 +31,7 @@ impl de::Error for TauqError {
 // Serializer Implementation
 // ============================================================================
 
-impl<'a> ser::Serializer for &'a mut TbfSerializer {
+impl ser::Serializer for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
     type SerializeSeq = Self;
@@ -251,7 +251,7 @@ impl<'a> ser::Serializer for &'a mut TbfSerializer {
     }
 }
 
-impl<'a> ser::SerializeSeq for &'a mut TbfSerializer {
+impl ser::SerializeSeq for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
@@ -264,7 +264,7 @@ impl<'a> ser::SerializeSeq for &'a mut TbfSerializer {
     }
 }
 
-impl<'a> ser::SerializeTuple for &'a mut TbfSerializer {
+impl ser::SerializeTuple for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
@@ -277,7 +277,7 @@ impl<'a> ser::SerializeTuple for &'a mut TbfSerializer {
     }
 }
 
-impl<'a> ser::SerializeTupleStruct for &'a mut TbfSerializer {
+impl ser::SerializeTupleStruct for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
@@ -290,7 +290,7 @@ impl<'a> ser::SerializeTupleStruct for &'a mut TbfSerializer {
     }
 }
 
-impl<'a> ser::SerializeTupleVariant for &'a mut TbfSerializer {
+impl ser::SerializeTupleVariant for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
@@ -303,7 +303,7 @@ impl<'a> ser::SerializeTupleVariant for &'a mut TbfSerializer {
     }
 }
 
-impl<'a> ser::SerializeMap for &'a mut TbfSerializer {
+impl ser::SerializeMap for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
@@ -320,7 +320,7 @@ impl<'a> ser::SerializeMap for &'a mut TbfSerializer {
     }
 }
 
-impl<'a> ser::SerializeStruct for &'a mut TbfSerializer {
+impl ser::SerializeStruct for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
@@ -337,7 +337,7 @@ impl<'a> ser::SerializeStruct for &'a mut TbfSerializer {
     }
 }
 
-impl<'a> ser::SerializeStructVariant for &'a mut TbfSerializer {
+impl ser::SerializeStructVariant for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
