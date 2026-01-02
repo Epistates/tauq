@@ -16,7 +16,7 @@
 ## Key Features
 
 ### Compact Binary Encoding
-- **Up to 84% smaller than JSON** for structured data (with schema-aware encoding)
+- **Up to 83% smaller than JSON** for structured data (with schema-aware encoding)
 - **44-56% reduction** with generic serde (CLI default, no schema knowledge)
 - Adaptive integer encoding (uses minimum bytes needed)
 - Dictionary compression for repeated strings
@@ -87,10 +87,10 @@ struct User {
 let users = vec![/* ... */];
 let bytes = tauq::tbf::to_bytes(&users).unwrap();
 ```
-- **Achieves**: ~84% reduction from JSON (leverages schema + columnar encoding)
+- **Achieves**: ~83% reduction from JSON (leverages schema + columnar encoding)
 - **Pros**: Optimal compression, zero-copy deserialization, type safety
 - **Use when**: Rust projects, known schema, maximum compression needed
-- **Example**: 94 KB JSON → 14 KB TBF
+- **Example**: 92 KB JSON → 16 KB TBF
 
 ### 3. Iceberg Integration (Data Lakes)
 ```rust
@@ -99,7 +99,7 @@ use tauq::tbf_iceberg::TbfFileWriter;
 // Write directly to Iceberg tables with columnar encoding
 TbfFileWriter::new(schema).write_records(records)?;
 ```
-- **Achieves**: ~84% reduction (full columnar optimization)
+- **Achieves**: ~83% reduction (full columnar optimization)
 - **Pros**: Data lake integration, distributed processing, time-series friendly
 - **Use when**: Iceberg tables, Arrow workflows, distributed systems
 
@@ -107,9 +107,9 @@ TbfFileWriter::new(schema).write_records(records)?;
 
 | Format | 1000 Employee Records | vs JSON |
 |--------|----------------------|---------|
-| JSON (minified) | 87 KB | baseline |
-| TQN (text) | 43 KB | -51% |
-| TBF (binary) | 14 KB | **-84%** |
+| JSON (minified) | 92 KB | baseline |
+| TQN (text) | 43 KB | -53% |
+| TBF (binary) | 16 KB | **-83%** |
 
 ## Next Steps
 

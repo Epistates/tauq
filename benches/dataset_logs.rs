@@ -202,6 +202,7 @@ pub fn generate_event_logs_with_seed(count: usize, seed: u64) -> Vec<Value> {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]
@@ -275,7 +276,7 @@ mod tests {
 
         // Critical should be rare (< 0.2%)
         let critical_count = severity_counts.get("CRITICAL").copied().unwrap_or(0);
-        assert!(critical_count as f64 / data.len() as f64 < 0.01);
+        assert!((critical_count as f64 / data.len() as f64) < 0.01);
     }
 
     #[test]

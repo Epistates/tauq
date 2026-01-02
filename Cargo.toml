@@ -39,7 +39,7 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 once_cell = "1.18"
 regex = "1.9"
 thiserror = "2.0"
-pyo3 = { version = "0.20", features = ["extension-module"], optional = true }
+pyo3 = { version = "0.24", features = ["extension-module"], optional = true }
 rhai = { version = "1.19", optional = true, features = ["serde"] }
 tempfile = "3.8"
 ahash = "=0.8.11"

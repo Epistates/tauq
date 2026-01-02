@@ -284,6 +284,7 @@ fn bench_tauq_text(c: &mut Criterion) {
 // Comparison: Parquet (via Polars)
 // ============================================================================
 
+#[cfg(feature = "polars")]
 fn bench_parquet(c: &mut Criterion) {
     use polars::prelude::*;
 
@@ -373,35 +374,6 @@ fn bench_size_comparison(c: &mut Criterion) {
         #[cfg(feature = "rmp-serde")]
         let msgpack_size = tauq::binary::to_msgpack(&employees).unwrap().len();
 
-        // Parquet size
-        use polars::prelude::*;
-        let ids: Vec<u32> = employees.iter().map(|e| e.id).collect();
-        let names: Vec<&str> = employees.iter().map(|e| e.name.as_str()).collect();
-        let ages: Vec<u32> = employees.iter().map(|e| e.age).collect();
-        let cities: Vec<&str> = employees.iter().map(|e| e.city.as_str()).collect();
-        let departments: Vec<&str> = employees.iter().map(|e| e.department.as_str()).collect();
-        let salaries: Vec<u32> = employees.iter().map(|e| e.salary).collect();
-        let experiences: Vec<u32> = employees.iter().map(|e| e.experience).collect();
-        let project_counts: Vec<u32> = employees.iter().map(|e| e.project_count).collect();
-
-        let df = DataFrame::new(vec![
-            Series::new("id".into(), ids),
-            Series::new("name".into(), names),
-            Series::new("age".into(), ages),
-            Series::new("city".into(), cities),
-            Series::new("department".into(), departments),
-            Series::new("salary".into(), salaries),
-            Series::new("experience".into(), experiences),
-            Series::new("project_count".into(), project_counts),
-        ]).unwrap();
-
-        let mut parquet_bytes = Vec::new();
-        {
-            let cursor = Cursor::new(&mut parquet_bytes);
-            ParquetWriter::new(cursor).finish(&mut df.clone()).unwrap();
-        }
-        let parquet_size = parquet_bytes.len();
-
         println!("\n=== Size Comparison ({} records) ===", size);
         println!("JSON:     {:>8} bytes (baseline)", json_size);
         println!("Tauq:     {:>8} bytes ({:.1}% of JSON)", tauq_size, (tauq_size as f64 / json_size as f64) * 100.0);
@@ -413,7 +385,6 @@ fn bench_size_comparison(c: &mut Criterion) {
         println!("Postcard: {:>8} bytes ({:.1}% of JSON)", postcard_size, (postcard_size as f64 / json_size as f64) * 100.0);
         #[cfg(feature = "rmp-serde")]
         println!("MsgPack:  {:>8} bytes ({:.1}% of JSON)", msgpack_size, (msgpack_size as f64 / json_size as f64) * 100.0);
-        println!("Parquet:  {:>8} bytes ({:.1}% of JSON)", parquet_size, (parquet_size as f64 / json_size as f64) * 100.0);
 
         // Dummy benchmark just to have something in the group
         group.bench_function(BenchmarkId::new("size_calc", size), |b| {
@@ -454,11 +425,20 @@ criterion_group!(
     bench_msgpack,
 );
 
+#[cfg(feature = "polars")]
 criterion_group!(
     comparison_benches,
     bench_json,
     bench_tauq_text,
     bench_parquet,
+    bench_size_comparison,
+);
+
+#[cfg(not(feature = "polars"))]
+criterion_group!(
+    comparison_benches,
+    bench_json,
+    bench_tauq_text,
     bench_size_comparison,
 );
 

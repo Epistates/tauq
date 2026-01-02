@@ -1,6 +1,6 @@
 # TBF vs Protobuf: Why TBF is SOTA
 
-**TL;DR**: TBF combines the best of both worlds: Protobuf's binary efficiency with JSON's semantic flexibility. **TBF is 84% smaller than JSON, comparable to Protobuf, but doesn't require .proto files or code generation.**
+**TL;DR**: TBF combines the best of both worlds: Protobuf's binary efficiency with JSON's semantic flexibility. **TBF is 83% smaller than JSON, comparable to Protobuf, but doesn't require .proto files or code generation.**
 
 ---
 
@@ -27,11 +27,11 @@
 
 ```
 Format          Size        vs JSON
-JSON           87 KB        100%
-Protobuf       ~13 KB       15%
-TBF (generic)  41 KB        47%
-TBF (schema)   14 KB        16%     ← Competitive with Protobuf
-TQN            43 KB        49%
+JSON           92 KB        100%
+Protobuf       ~13 KB       14%
+TBF (generic)  41 KB        45%
+TBF (schema)   16 KB        17%     ← Competitive with Protobuf
+TQN            43 KB        47%
 ```
 
 ### Why the variance?
@@ -295,10 +295,10 @@ TBF (schema) 4 µs
 
 ```
 Format          Size        Parse Time    Total
-JSON            87 MB       62 sec        ✓
+JSON            92 MB       62 sec        ✓
 Protobuf        13 MB       6 sec         ✓✓✓
 TBF (generic)   41 MB       11 sec        ✓✓
-TBF (schema)    14 MB       4 sec         ✓✓✓✓ ← Best
+TBF (schema)    16 MB       4 sec         ✓✓✓✓ ← Best
 ```
 
 ---

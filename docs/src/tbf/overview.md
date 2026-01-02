@@ -124,7 +124,7 @@ Column types:
 | Encode | O(n) | Single pass |
 | Decode | O(n) | Single pass |
 | Random access | O(1) | With index |
-| Compression | ~84% vs JSON | Depends on data |
+| Compression | ~83% vs JSON | Depends on data |
 
 ## Example: Full Encoding
 

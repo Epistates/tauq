@@ -242,7 +242,14 @@ pub extern "system" fn Java_com_tauq_Tauq_toTbf(
 /// Class:     com_tauq_Tauq
 /// Method:    tbfToJson
 /// Signature: ([B)Ljava/lang/String;
+///
+/// # Safety
+///
+/// This function is a JNI callback and must be called from Java with a valid
+/// `jbyteArray` pointer. The `data` parameter must be a valid JNI byte array
+/// reference obtained from the JVM.
 #[unsafe(no_mangle)]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "system" fn Java_com_tauq_Tauq_tbfToJson(
     mut env: JNIEnv,
     _class: JClass,

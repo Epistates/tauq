@@ -87,7 +87,7 @@ pub fn generate_transactions(count: usize) -> Vec<Value> {
                 "timestamp": base_timestamp + (i as i64 * 60),  // One transaction per minute
                 "user_id": user_id,
                 "merchant": merchant,
-                "amount": (amount as f64 * 100.0).round() / 100.0,  // 2 decimal places
+                "amount": ((amount * 100.0) as f64).round() / 100.0,  // 2 decimal places
                 "category": CATEGORIES[rng.gen_range(0..CATEGORIES.len())],
                 "success": success,
                 "device": if rng.gen_bool(0.6) { "mobile" } else { "web" },
@@ -121,7 +121,7 @@ pub fn generate_transactions_with_seed(count: usize, seed: u64) -> Vec<Value> {
                 "timestamp": base_timestamp + (i as i64 * 60),
                 "user_id": user_id,
                 "merchant": merchant,
-                "amount": (amount as f64 * 100.0).round() / 100.0,
+                "amount": ((amount * 100.0) as f64).round() / 100.0,
                 "category": CATEGORIES[rng.gen_range(0..CATEGORIES.len())],
                 "success": success,
                 "device": if rng.gen_bool(0.6) { "mobile" } else { "web" },
@@ -133,6 +133,7 @@ pub fn generate_transactions_with_seed(count: usize, seed: u64) -> Vec<Value> {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]
@@ -165,7 +166,7 @@ mod tests {
 
         // Count merchant frequency
         let mut merchants = std::collections::HashMap::new();
-        let mut total_amount = 0.0;
+        let mut _total_amount = 0.0;
         let mut success_count = 0;
 
         for tx in &data {
@@ -173,7 +174,7 @@ mod tests {
                 .or_insert(0) += 1;
 
             if let Some(amount) = tx["amount"].as_f64() {
-                total_amount += amount;
+                _total_amount += amount;
             }
 
             if tx["success"].as_bool().unwrap() {

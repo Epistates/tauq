@@ -5,6 +5,7 @@ use serde_json::json;
 use tauq::{compile_tauq, format_to_tauq};
 
 /// Normalize JSON for comparison (convert integer floats back to integers when appropriate)
+#[allow(dead_code)]
 fn normalize_json(value: &serde_json::Value) -> serde_json::Value {
     match value {
         serde_json::Value::Number(n) => {
@@ -210,7 +211,7 @@ fn test_roundtrip_special_characters() {
 fn test_roundtrip_numeric_precision() {
     let original = json!({
         "integer": 42,
-        "float": 3.14159,
+        "float": 1.23456,
         "scientific": 1e10,
         "negative": -999,
         "zero": 0

@@ -52,10 +52,10 @@ mod tbf_compression_validation {
 
     #[test]
     fn validate_claim_documentation() {
-        // This test documents when the 84% claim applies and when it doesn't
+        // This test documents when the 83% claim applies and when it doesn't
         println!("\n=== Compression Claims Clarification ===");
         println!();
-        println!("The 84% compression claim is CONDITIONAL:");
+        println!("The 83% compression claim is CONDITIONAL:");
         println!();
         println!("1. GENERIC SERDE ENCODING (CLI default):");
         println!("   - What: Standard serde serialization without schema hints");
@@ -65,20 +65,20 @@ mod tbf_compression_validation {
         println!();
         println!("2. SCHEMA-AWARE ENCODING (Rust API):");
         println!("   - What: TableEncode with type hints + columnar encoding");
-        println!("   - Achieves: ~17% of JSON size (~84% reduction)");
+        println!("   - Achieves: ~17% of JSON size (~83% reduction)");
         println!("   - Used by: #[derive(TableEncode)] with #[tauq(...)] hints");
         println!("   - Why: Adaptive integer encoding, offset encoding, column reordering");
         println!();
         println!("3. ICEBERG/ARROW INTEGRATION:");
         println!("   - What: Columnar encoding via Apache Arrow");
-        println!("   - Achieves: ~17% of JSON size (~84% reduction)");
+        println!("   - Achieves: ~17% of JSON size (~83% reduction)");
         println!("   - Used by: ArrowToTbf trait, TbfFileWriter");
         println!("   - Why: Full columnar layout + compression");
         println!();
         println!("BOTTOM LINE:");
         println!("- Use CLI (generic): Fast, no setup, ~40% reduction");
-        println!("- Use Rust API (schema): Best compression, ~84% reduction");
-        println!("- Use Iceberg (arrow): Data lake integration, ~84% reduction");
+        println!("- Use Rust API (schema): Best compression, ~83% reduction");
+        println!("- Use Iceberg (arrow): Data lake integration, ~83% reduction");
     }
 
     #[test]

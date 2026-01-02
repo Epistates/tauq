@@ -152,6 +152,7 @@ pub fn generate_geospatial_data_with_seed(count: usize, seed: u64) -> Vec<Value>
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]

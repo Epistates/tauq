@@ -619,7 +619,7 @@ impl DirectU32Encoder {
     }
 }
 
-/// Direct string encoder - writes directly without intermediate Vec<String>
+/// Direct string encoder - writes directly without intermediate `Vec<String>`
 pub struct DirectStringEncoder {
     data: UltraBuffer,
     count: usize,

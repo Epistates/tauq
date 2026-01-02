@@ -89,7 +89,7 @@ tauq --minify examples/5_real_world/k8s_deployment.tqn
 
 | Format | 1000 Records | Tokens | vs JSON |
 |--------|--------------|--------|---------|
-| JSON (minified) | 87 KB | 24,005 | baseline |
+| JSON (minified) | 92 KB | 24,005 | baseline |
 | TOON | 45 KB | 12,002 | -50.0% |
 | **Tauq** | **43 KB** | **11,012** | **-54.1%** |
 

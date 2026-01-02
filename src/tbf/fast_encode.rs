@@ -499,6 +499,5 @@ mod tests {
         buf.write_bool(true);
 
         assert!(!buf.is_empty());
-        assert!(buf.len() > 0);
     }
 }

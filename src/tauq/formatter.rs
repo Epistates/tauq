@@ -1019,7 +1019,7 @@ mod tests {
 
         // Parse it back
         let mut parser = crate::tauq::Parser::new(&tauq_str);
-        let parsed = parser.parse().expect(&format!("Failed to parse: {}", tauq_str));
+        let parsed = parser.parse().unwrap_or_else(|_| panic!("Failed to parse: {}", tauq_str));
 
         // Parser returns object (possibly wrapped in array for consistency)
         let obj = if let Some(arr) = parsed.as_array() {

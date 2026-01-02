@@ -9,7 +9,7 @@ TBF's schema-based encoding allows you to specify type hints that optimize encod
 tauq build data.tqn --format tbf  # Uses generic serde
 ```
 
-**Schema-aware encoding (Rust API)**: ~17% of JSON size (~84% reduction)
+**Schema-aware encoding (Rust API)**: ~17% of JSON size (~83% reduction)
 ```rust
 #[derive(TableEncode)]
 struct Data { /* ... */ }

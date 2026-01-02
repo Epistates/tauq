@@ -224,6 +224,13 @@ pub unsafe extern "C" fn tauq_free_string(s: *mut c_char) {
 /// Convert JSON/Tauq string to TBF bytes.
 /// Returns pointer to bytes, sets out_len to length.
 /// Result must be freed with `tauq_free_buffer`.
+///
+/// # Safety
+///
+/// - `input` must be a valid, null-terminated C string pointer.
+/// - `out_len` must be a valid pointer to a writable `usize` location.
+/// - The returned pointer must be freed with `tauq_free_buffer` using the
+///   exact length written to `out_len`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tauq_to_tbf(input: *const c_char, out_len: *mut usize) -> *mut u8 {
     if input.is_null() || out_len.is_null() {
@@ -277,6 +284,12 @@ pub unsafe extern "C" fn tauq_to_tbf(input: *const c_char, out_len: *mut usize) 
 
 /// Convert TBF bytes to JSON string.
 /// Caller must free result with `tauq_free_string`.
+///
+/// # Safety
+///
+/// - `data` must be a valid pointer to `len` bytes of TBF-encoded data.
+/// - `len` must accurately reflect the number of bytes at `data`.
+/// - The returned string must be freed with `tauq_free_string`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tauq_tbf_to_json(data: *const u8, len: usize) -> *mut c_char {
     if data.is_null() || len == 0 {
@@ -306,6 +319,12 @@ pub unsafe extern "C" fn tauq_tbf_to_json(data: *const u8, len: usize) -> *mut c
 
 /// Convert TBF bytes to Tauq string.
 /// Caller must free result with `tauq_free_string`.
+///
+/// # Safety
+///
+/// - `data` must be a valid pointer to `len` bytes of TBF-encoded data.
+/// - `len` must accurately reflect the number of bytes at `data`.
+/// - The returned string must be freed with `tauq_free_string`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tauq_tbf_to_tauq(data: *const u8, len: usize) -> *mut c_char {
     if data.is_null() || len == 0 {
@@ -334,6 +353,12 @@ pub unsafe extern "C" fn tauq_tbf_to_tauq(data: *const u8, len: usize) -> *mut c
 
 /// Free a buffer returned by tauq_to_tbf.
 /// Must pass the exact length returned by the allocation.
+///
+/// # Safety
+///
+/// - `ptr` must be a pointer previously returned by `tauq_to_tbf`.
+/// - `len` must be the exact length that was written to `out_len` by `tauq_to_tbf`.
+/// - The pointer must not have been freed already.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn tauq_free_buffer(ptr: *mut u8, len: usize) {
     if !ptr.is_null() && len > 0 {

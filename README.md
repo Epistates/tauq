@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/tauq?label=npm)](https://www.npmjs.com/package/tauq)
 [![PyPI](https://img.shields.io/pypi/v/tauq?label=pypi)](https://pypi.org/project/tauq/)
 [![Downloads](https://img.shields.io/crates/d/tauq?label=downloads)](https://crates.io/crates/tauq)
-[![Tests](https://img.shields.io/badge/tests-220_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-358_passing-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---
@@ -16,7 +16,7 @@
 **Tauq** (τq) is three things:
 
 1.  **Tauq Notation (`.tqn`)**: A schema-driven text format that achieves 44-54% fewer tokens than JSON (verified with tiktoken cl100k_base).
-2.  **Tauq Binary Format (TBF)**: A high-performance binary format achieving 84% size reduction vs JSON with schema-aware columnar encoding.
+2.  **Tauq Binary Format (TBF)**: A high-performance binary format achieving 83% size reduction vs JSON with schema-aware columnar encoding.
 3.  **Tauq Query (`.tqq`)**: A pre-processor with shell integration for data transformations.
 
 Built for the AI era where every token counts.
@@ -39,9 +39,9 @@ Built for the AI era where every token counts.
 
 | Format | Size | vs JSON |
 |--------|------|---------|
-| JSON (minified) | 87 KB | baseline |
-| Tauq (TQN) | 43 KB | -51% |
-| **Tauq (TBF)** | **14 KB** | **-84%** |
+| JSON (minified) | 92 KB | baseline |
+| Tauq (TQN) | 43 KB | -53% |
+| **Tauq (TBF)** | **16 KB** | **-83%** |
 
 **Overall (10 datasets, 55,647 tokens):** Tauq saves 44.2% vs JSON, 10.8% vs TOON. See `benchmarks/` for full results.
 
@@ -69,9 +69,9 @@ Built for the AI era where every token counts.
 - Space delimiters tokenize better than commas
 
 ### Binary Format (TBF)
-- **Up to 84% smaller than JSON** (with schema-aware encoding)
+- **Up to 83% smaller than JSON** (with schema-aware encoding)
 - Generic serde encoder: ~44-56% reduction (CLI default)
-- Schema-aware encoder: ~84% reduction (Rust API + type hints)
+- Schema-aware encoder: ~83% reduction (Rust API + type hints)
 - Adaptive integer and dictionary compression
 - **Apache Iceberg integration** for data lakes
 
@@ -92,10 +92,12 @@ Built for the AI era where every token counts.
 - Polyglot support (Python, Rhai, JavaScript)
 
 ### Production-Ready CLI
-- `tauq build` - Parse to JSON
+- `tauq build` - Smart build (TQN→JSON, TQQ→Tauq, supports TBF output)
 - `tauq format` - JSON → Tauq
-- `tauq minify` - Compress to one line
+- `tauq query` - Filter/transform with Rhai expressions
 - `tauq exec` - Run Tauq Query pipelines
+- `tauq minify` - Compress to one line
+- `tauq prettify` - Format to readable Tauq
 - `tauq validate` - Check syntax
 
 ---
@@ -321,7 +323,7 @@ struct Employee {
 }
 
 let employees = vec![/* ... */];
-let bytes = employees.encode_tbf();  // 84% smaller than JSON
+let bytes = employees.encode_tbf();  // 83% smaller than JSON
 ```
 
 ### Apache Iceberg Integration

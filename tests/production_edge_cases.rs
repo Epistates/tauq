@@ -145,9 +145,9 @@ mod edge_cases {
     /// Test arrays with mixed types
     #[test]
     fn test_mixed_type_arrays() {
-        let mixed = vec![
+        let mixed = [
             json!(42i64),
-            json!(3.14f64),
+            json!(1.23f64),
             json!("string"),
             json!(true),
             json!(null),

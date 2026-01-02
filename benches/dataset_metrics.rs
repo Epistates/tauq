@@ -207,6 +207,7 @@ pub fn generate_metrics_with_seed(count_per_series: usize, seed: u64) -> Vec<Val
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]

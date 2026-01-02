@@ -683,7 +683,7 @@ EXAMPLES:
     tauq build config.tqn -o config.json
     tauq build config.tqn --pretty
 
-    # Parse Tauq (.tqn) to TBF binary (84% smaller than JSON)
+    # Parse Tauq (.tqn) to TBF binary (83% smaller than JSON)
     tauq build data.tqn --format tbf -o data.tbf
     tauq build data.tqn --tbf -o data.tbf
 
@@ -707,7 +707,7 @@ EXAMPLES:
 
 WHY TAUQ:
     • TQN: 44-54% fewer tokens than JSON (verified with tiktoken)
-    • TBF: 84% smaller than JSON (binary columnar format)
+    • TBF: 83% smaller than JSON (binary columnar format)
     • True streaming via StreamingParser iterator
     • Beautiful, minimal syntax
     • Schema-driven with !def / !use

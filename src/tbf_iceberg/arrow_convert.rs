@@ -275,7 +275,7 @@ fn encode_bool_column(values: &[bool], buf: &mut UltraBuffer) {
     encode_varint_fast(0, buf); // column type: bool
     encode_varint_fast(n as u64, buf);
 
-    let num_bytes = (n + 7) / 8;
+    let num_bytes = n.div_ceil(8);
     for byte_idx in 0..num_bytes {
         let mut byte = 0u8;
         for bit_idx in 0..8 {

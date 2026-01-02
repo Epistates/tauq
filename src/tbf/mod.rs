@@ -373,7 +373,7 @@ mod tests {
         assert_eq!(v, from_bytes::<u64>(&to_bytes(&v).unwrap()).unwrap());
 
         // Floats
-        let v: f64 = 3.14159265358979;
+        let v: f64 = 1.234567890123;
         assert_eq!(v, from_bytes::<f64>(&to_bytes(&v).unwrap()).unwrap());
 
         // Bool

@@ -502,7 +502,7 @@ mod tests {
         assert_eq!(i64::tbf_decode(&bytes).unwrap(), v);
 
         // Floats
-        let v: f64 = 3.14159265358979;
+        let v: f64 = 1.234567890123;
         let bytes = v.tbf_encode();
         assert_eq!(f64::tbf_decode(&bytes).unwrap(), v);
     }

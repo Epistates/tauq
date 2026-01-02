@@ -175,6 +175,7 @@ fn test_unicode_names() {
 }
 
 #[test]
+#[allow(clippy::approx_constant)]
 fn test_numeric_edge_cases() {
     let tauq = r#"
 !def Data id value

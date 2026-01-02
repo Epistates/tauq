@@ -1,5 +1,3 @@
-use tauq;
-
 #[test]
 fn test_named_args() {
     let input = r#"                                                                                                                                                                   

@@ -12,7 +12,7 @@ JSON is verbose. In the age of Large Language Models (LLMs), verbosity equals co
   {"id": 2, "name": "Bob", "email": "bob@example.com", "role": "user", "active": true}
 ]
 ```
-**~242 tokens** (minified) per 100 records. **87 KB** for 1,000 records.
+**~242 tokens** (minified) per 100 records. **92 KB** for 1,000 records.
 
 ## The Solution
 
@@ -37,7 +37,7 @@ struct User {
     name: String,
 }
 ```
-**14 KB** for 1,000 records (**84% smaller** than JSON with schema-aware encoding).
+**16 KB** for 1,000 records (**83% smaller** than JSON with schema-aware encoding).
 With generic serde: 44-56% reduction via CLI converter.
 
 ## Benchmark Results
@@ -46,7 +46,7 @@ With generic serde: 44-56% reduction via CLI converter.
 
 | Format | 1000 Records | Tokens | vs JSON |
 |--------|--------------|--------|---------|
-| JSON (minified) | 87 KB | 24,005 | baseline |
+| JSON (minified) | 92 KB | 24,005 | baseline |
 | TOON | 45 KB | 12,002 | -50.0% |
 | **Tauq (TQN)** | **43 KB** | **11,012** | **-54.1%** |
 
@@ -54,16 +54,16 @@ With generic serde: 44-56% reduction via CLI converter.
 
 | Format | 1000 Records | vs JSON |
 |--------|--------------|---------|
-| JSON (minified) | 87 KB | baseline |
-| Tauq (TQN) | 43 KB | -51% |
-| **Tauq (TBF)** | **14 KB** | **-84%** |
+| JSON (minified) | 92 KB | baseline |
+| Tauq (TQN) | 43 KB | -53% |
+| **Tauq (TBF)** | **16 KB** | **-83%** |
 
 *All token counts verified with tiktoken cl100k_base (GPT-4/Claude tokenizer).*
 
 ## Key Features
 
 - **Token-Optimal (TQN):** 44-54% fewer tokens than JSON for LLM inputs.
-- **Binary Format (TBF):** 84% smaller than JSON with columnar encoding.
+- **Binary Format (TBF):** 83% smaller than JSON with columnar encoding.
 - **Schema-Driven:** Define shapes with `!def` and switch with `!use`.
 - **True Streaming:** `StreamingParser` yields records one at a time.
 - **Iceberg Integration:** TBF integrates with Apache Iceberg for data lakes.

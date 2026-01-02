@@ -348,14 +348,14 @@ large 1e10
 #[test]
 fn test_floating_point() {
     let input = r#"
-pi 3.14159
-euler 2.71828
+ratio 1.61803
+golden 0.57721
 "#;
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result["pi"], 3.14159);
-    assert_eq!(result["euler"], 2.71828);
+    assert_eq!(result["ratio"], 1.61803);
+    assert_eq!(result["golden"], 0.57721);
 }
 
 // ========== COMPLEX SCENARIOS ==========

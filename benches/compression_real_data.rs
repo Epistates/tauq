@@ -9,7 +9,6 @@ mod dataset_metrics;
 mod dataset_geospatial;
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use serde_json;
 
 // ============================================================================
 // Real-World Data Compression Benchmarks

@@ -185,7 +185,7 @@ database {
         assert_eq!(config.app.version, "1.0.0");
         assert_eq!(config.database.host, "localhost");
         assert_eq!(config.database.port, 5432.0);
-        assert_eq!(config.database.ssl, true);
+        assert!(config.database.ssl);
     }
 
     #[test]

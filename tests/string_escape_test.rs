@@ -1,5 +1,3 @@
-use tauq;
-
 #[test]
 fn test_string_escapes() {
     let input = r#"

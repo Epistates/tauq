@@ -7,7 +7,7 @@ This guide shows how to use **TQQ**, **TQN**, and **TBF** together as a cohesive
 | Component | Purpose | Best For |
 |-----------|---------|----------|
 | **TQN** | Text notation with 54% token savings | LLM inputs, config files, human editing |
-| **TBF** | Binary format with 84% size savings | Transport, storage, databases, APIs |
+| **TBF** | Binary format with 83% size savings | Transport, storage, databases, APIs |
 | **TQQ** | Query language for transformations | Data pipelines, filtering, aggregation |
 
 ## The Core Pattern: TQN ↔ TBF
@@ -16,14 +16,14 @@ This guide shows how to use **TQQ**, **TQN**, and **TBF** together as a cohesive
 
 ```
 Write TQN        Convert to TBF     Send/Store       Convert back      Read TQN
-(readable) ----→ (compact)    ----→ (84% smaller) →   to TQN    ---→ (readable)
+(readable) ----→ (compact)    ----→ (83% smaller) →   to TQN    ---→ (readable)
 
 User sees TQN at both ends. TBF handles the transport invisibly.
 ```
 
 **Why this matters:**
 - ✅ Users always work with readable TQN
-- ✅ Transport is transparent and 84% smaller
+- ✅ Transport is transparent and 83% smaller
 - ✅ No format mismatch between endpoints
 - ✅ Both sides see the same data structure
 
@@ -43,7 +43,7 @@ $ cat config.tqn
 api.example.com 443 true
 cache.internal 6379 true
 
-# 2. Convert to TBF for transport (84% smaller than JSON)
+# 2. Convert to TBF for transport (83% smaller than JSON)
 $ tauq build config.tqn --format tbf -o config.tbf
 
 # 3. Transport/store compact TBF
@@ -88,7 +88,7 @@ println!("{}", tqn_readable);
 **Why this workflow:**
 - ✅ Both sides work with readable TQN
 - ✅ Transport is transparent and compact
-- ✅ 84% size reduction without user involvement
+- ✅ 83% size reduction without user involvement
 - ✅ Easy to version control (TQN in git)
 - ✅ Zero parsing overhead (TBF is fast)
 
@@ -194,7 +194,7 @@ async fn create_users(body: web::Bytes) -> HttpResponse {
         Err(e) => return HttpResponse::BadRequest().body(format!("{}", e)),
     };
 
-    // 4. Store in database as TBF (84% smaller than JSON)
+    // 4. Store in database as TBF (83% smaller than JSON)
     for user in &users {
         let tbf_bytes = tbf::to_bytes(user).unwrap();
         database.insert(user.id, tbf_bytes);
@@ -305,7 +305,7 @@ fn ingest_data_pipeline() {
     writer.finish()?;
 
     // 5. Results: TBF in Iceberg table
-    // - 84% smaller than JSON
+    // - 83% smaller than JSON
     // - Zero-copy deserialization in Rust
     // - Native Iceberg format for SQL queries
 }
@@ -382,8 +382,8 @@ Choose the right format for each step:
 | **Write data** | TQN | 54% fewer tokens, human-readable |
 | **Transform data** | TQQ (input) → TQN/TBF (output) | Flexible pipeline |
 | **Display data** | TQN | Easy to read and edit |
-| **Store in database** | TBF | 84% smaller, indexed efficiently |
-| **Send over network** | TBF | 84% smaller, faster parse |
+| **Store in database** | TBF | 83% smaller, indexed efficiently |
+| **Send over network** | TBF | 83% smaller, faster parse |
 | **LLM context** | TQN | 54% fewer tokens = lower cost |
 | **Config files** | TQN | Easy to version control and review |
 | **Data lake (Iceberg)** | TBF | Native columnar, analytical queries |
@@ -427,7 +427,7 @@ $ tauq exec process_orders.tqq < orders.tqn --format tqn
 ### Storage: Convert to TBF
 ```bash
 $ tauq build processed_orders.tqn --format tbf -o orders.tbf
-# Result: 14 KB instead of 87 KB (84% smaller)
+# Result: 16 KB instead of 92 KB (83% smaller)
 ```
 
 ### Transport: Send TBF
@@ -510,9 +510,9 @@ TOON:      12,002 tokens (50% savings)
 
 ### Binary Size (Lower = Faster transmission)
 ```
-JSON:      87 KB (1000 records)
+JSON:      92 KB (1000 records)
 TBF (gen): 41 KB (55% reduction)     ✅
-TBF (schema): 14 KB (84% reduction)  ✅✅
+TBF (schema): 16 KB (83% reduction)  ✅✅
 ```
 
 ### Parse Performance (Stream vs. Full)
