@@ -8,8 +8,8 @@ fn test_tauq_minified() {
     let result = parser.parse().unwrap();
 
     let expected = json!([
-        {"i": 1.0, "n": "A"},
-        {"i": 2.0, "n": "B"}
+        {"i": 1, "n": "A"},
+        {"i": 2, "n": "B"}
     ]);
 
     assert_eq!(result, expected);

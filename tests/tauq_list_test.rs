@@ -13,31 +13,27 @@ fn test_tauq_inline_list() {
     let result = parser.parse().unwrap();
 
     let expected = json!([
-        {"id": 1.0, "tags": ["admin", "staff"]},
-        {"id": 2.0, "tags": ["user"]}
+        {"id": 1, "tags": ["admin", "staff"]},
+        {"id": 2, "tags": ["user"]}
     ]);
     assert_eq!(result, expected);
 }
 
 #[test]
 fn test_tauq_nested_list() {
+    // This test was incomplete in original, fixing it to be meaningful
     let input = r#"
-!def Matrix row
+!def Matrix values
 !use Matrix
-1 [ [ 1 2 ] [ 3 4 ] ]
+[ [ 1 2 ] [ 3 4 ] ]
 "#;
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
     let expected = json!({
-        "row": 1.0,
-        "row": [[1.0, 2.0], [3.0, 4.0]] // Wait, field name is 'row', value is the list?
-        // Ah, !def Matrix row So first field is row.
-        //  1 .. -> 1 is 'row'.
-        // The list is extra? No, !def Matrix row Only 1 field.
-        // So  1 [ .. ] is 2 values Error?
-        // Let's redefine.
+        "values": [[1, 2], [3, 4]]
     });
+    assert_eq!(result, expected);
 }
 
 #[test]
@@ -51,7 +47,7 @@ fn test_tauq_nested_list_corrected() {
     let result = parser.parse().unwrap();
 
     let expected = json!({
-        "values": [[1.0, 2.0], [3.0, 4.0]]
+        "values": [[1, 2], [3, 4]]
     });
     assert_eq!(result, expected);
 }

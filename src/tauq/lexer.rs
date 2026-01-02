@@ -183,9 +183,13 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        // Try to parse as number
-        if let Ok(n) = s.parse::<f64>() {
-            Token::Number(n)
+        // Try to parse as number with precision fallback
+        if let Ok(i) = s.parse::<i64>() {
+            Token::Integer(i)
+        } else if let Ok(u) = s.parse::<u64>() {
+            Token::UnsignedInteger(u)
+        } else if let Ok(f) = s.parse::<f64>() {
+            Token::Float(f)
         } else {
             match s.as_str() {
                 "true" => Token::Bool(true),

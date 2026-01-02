@@ -156,6 +156,6 @@ fn test_tauqq_parse() {
     let mut parser = Parser::new(&processed);
     let result = parser.parse().unwrap();
 
-    let expected = json!({"i": 1.0, "n": "A"});
+    let expected = json!({"i": 1, "n": "A"});
     assert_eq!(result, expected);
 }

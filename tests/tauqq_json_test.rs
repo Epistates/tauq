@@ -37,5 +37,5 @@ fn test_tauqq_json_directive() {
     let parsed_json = parser.parse().unwrap();
 
     assert_eq!(parsed_json["name"], "Test");
-    assert_eq!(parsed_json["values"][0], 1.0);
+    assert_eq!(parsed_json["values"][0], 1);
 }

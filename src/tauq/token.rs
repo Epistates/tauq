@@ -7,8 +7,12 @@ pub enum Token {
     Ident(String),
     /// String literal
     String(String),
-    /// Numeric literal
-    Number(f64),
+    /// Signed integer literal
+    Integer(i64),
+    /// Unsigned integer literal (for values > i64::MAX)
+    UnsignedInteger(u64),
+    /// Floating point literal
+    Float(f64),
     /// Boolean literal
     Bool(bool),
     /// Null literal

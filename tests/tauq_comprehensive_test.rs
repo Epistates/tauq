@@ -2,7 +2,7 @@
 use serde_json::json;
 use tauq::tauq::Parser;
 
-// ========== BASIC SYNTAX ==========
+// ========== BASIC SYNTAX ========== 
 
 #[test]
 fn test_simple_map_entry() {
@@ -25,7 +25,7 @@ enabled true
     let result = parser.parse().unwrap();
 
     assert_eq!(result["host"], "localhost");
-    assert_eq!(result["port"], 8080.0);
+    assert_eq!(result["port"], 8080);
     assert_eq!(result["enabled"], true);
 }
 
@@ -53,10 +53,10 @@ zero 0
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result["count"], 42.0);
+    assert_eq!(result["count"], 42);
     assert_eq!(result["price"], 99.99);
-    assert_eq!(result["negative"], -10.0);
-    assert_eq!(result["zero"], 0.0);
+    assert_eq!(result["negative"], -10);
+    assert_eq!(result["zero"], 0);
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn test_null_value() {
     assert_eq!(result, json!({"value": null}));
 }
 
-// ========== ARRAYS ==========
+// ========== ARRAYS ========== 
 
 #[test]
 fn test_simple_array() {
@@ -98,12 +98,12 @@ fn test_array_with_numbers() {
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result, json!({"ids": [1.0, 2.0, 3.0, 4.0, 5.0]}));
+    assert_eq!(result, json!({"ids": [1, 2, 3, 4, 5]}));
 }
 
 #[test]
 fn test_array_with_strings() {
-    let input = r#"names ["Alice" "Bob" "Carol"]"#;
+    let input = r###"names ["Alice" "Bob" "Carol"]"###;
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
@@ -112,11 +112,11 @@ fn test_array_with_strings() {
 
 #[test]
 fn test_array_with_mixed_types() {
-    let input = r#"mixed [1 "two" true null]"#;
+    let input = r###"mixed [1 "two" true null]"###;
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result, json!({"mixed": [1.0, "two", true, null]}));
+    assert_eq!(result, json!({"mixed": [1, "two", true, null]}));
 }
 
 #[test]
@@ -134,10 +134,10 @@ fn test_nested_arrays() {
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result, json!({"matrix": [[1.0, 2.0], [3.0, 4.0]]}));
+    assert_eq!(result, json!({"matrix": [[1, 2], [3, 4]]}));
 }
 
-// ========== SHAPES (SCHEMAS) ==========
+// ========== SHAPES (SCHEMAS) ========== 
 
 #[test]
 fn test_shape_definition() {
@@ -150,7 +150,7 @@ fn test_shape_definition() {
     let result = parser.parse().unwrap();
 
     let expected = json!({
-        "id": 1.0,
+        "id": 1,
         "name": "Alice",
         "email": "alice@example.com"
     });
@@ -170,9 +170,9 @@ fn test_multiple_rows() {
     let result = parser.parse().unwrap();
 
     let expected = json!([
-        {"id": 1.0, "name": "Alice"},
-        {"id": 2.0, "name": "Bob"},
-        {"id": 3.0, "name": "Carol"}
+        {"id": 1, "name": "Alice"},
+        {"id": 2, "name": "Bob"},
+        {"id": 3, "name": "Carol"}
     ]);
     assert_eq!(result, expected);
 }
@@ -187,11 +187,11 @@ fn test_shape_with_many_fields() {
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result["f1"], 1.0);
-    assert_eq!(result["f2"], 2.0);
-    assert_eq!(result["f3"], 3.0);
-    assert_eq!(result["f4"], 4.0);
-    assert_eq!(result["f5"], 5.0);
+    assert_eq!(result["f1"], 1);
+    assert_eq!(result["f2"], 2);
+    assert_eq!(result["f3"], 3);
+    assert_eq!(result["f4"], 4);
+    assert_eq!(result["f5"], 5);
 }
 
 #[test]
@@ -223,11 +223,11 @@ fn test_multiple_shapes() {
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result[0]["id"], 1.0);
+    assert_eq!(result[0]["id"], 1);
     assert_eq!(result[1]["sku"], "ABC123");
 }
 
-// ========== MINIFICATION ==========
+// ========== MINIFICATION ========== 
 
 #[test]
 fn test_minified_syntax() {
@@ -240,7 +240,7 @@ fn test_minified_syntax() {
 
 #[test]
 fn test_minified_with_strings() {
-    let input = r#"!def U name email; "Alice" "a@ex.com"; "Bob" "b@ex.com""#;
+    let input = r###"!def U name email; "Alice" "a@ex.com"; "Bob" "b@ex.com""###;
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
@@ -248,7 +248,7 @@ fn test_minified_with_strings() {
     assert_eq!(result[1]["name"], "Bob");
 }
 
-// ========== COMMENTS ==========
+// ========== COMMENTS ========== 
 
 #[test]
 fn test_line_comments() {
@@ -262,7 +262,7 @@ port 8080
     let result = parser.parse().unwrap();
 
     assert_eq!(result["host"], "localhost");
-    assert_eq!(result["port"], 8080.0);
+    assert_eq!(result["port"], 8080);
 }
 
 #[test]
@@ -275,10 +275,10 @@ port 8080 # Default port
     let result = parser.parse().unwrap();
 
     assert_eq!(result["host"], "localhost");
-    assert_eq!(result["port"], 8080.0);
+    assert_eq!(result["port"], 8080);
 }
 
-// ========== EDGE CASES ==========
+// ========== EDGE CASES ========== 
 
 #[test]
 fn test_empty_input() {
@@ -358,7 +358,7 @@ golden 0.57721
     assert_eq!(result["golden"], 0.57721);
 }
 
-// ========== COMPLEX SCENARIOS ==========
+// ========== COMPLEX SCENARIOS ========== 
 
 #[test]
 fn test_real_world_config() {
@@ -375,7 +375,7 @@ features [api websockets metrics]
 
     assert_eq!(result["app_name"], "MyService");
     assert_eq!(result["version"], "1.0.0");
-    assert_eq!(result["port"], 8080.0);
+    assert_eq!(result["port"], 8080);
     assert_eq!(result["debug"], true);
     assert_eq!(result["features"], json!(["api", "websockets", "metrics"]));
 }
@@ -418,7 +418,7 @@ fn test_product_catalog() {
     assert_eq!(products[2]["in_stock"], false);
 }
 
-// ========== TYPE SYSTEM ==========
+// ========== TYPE SYSTEM ========== 
 
 #[test]
 fn test_nested_object_type() {
@@ -431,7 +431,7 @@ fn test_nested_object_type() {
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result["id"], 1.0);
+    assert_eq!(result["id"], 1);
     assert_eq!(result["name"], "Alice");
     assert_eq!(result["addr"]["street"], "123 Main");
     assert_eq!(result["addr"]["city"], "New York");
@@ -447,7 +447,7 @@ fn test_list_type() {
     let mut parser = Parser::new(input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result["id"], 1.0);
+    assert_eq!(result["id"], 1);
     assert_eq!(result["roles"], json!(["admin", "user"]));
 }
 
@@ -466,12 +466,12 @@ Engineering 1000000 [
     let result = parser.parse().unwrap();
 
     assert_eq!(result["name"], "Engineering");
-    assert_eq!(result["budget"], 1000000.0);
+    assert_eq!(result["budget"], 1000000);
     assert_eq!(result["employees"][0]["name"], "Alice");
     assert_eq!(result["employees"][1]["role"], "Senior Engineer");
 }
 
-// ========== UNICODE & SPECIAL CHARS ==========
+// ========== UNICODE & SPECIAL CHARS ========== 
 
 #[test]
 fn test_unicode_strings() {
@@ -499,7 +499,7 @@ url "https://example.com/api?key=value&foo=bar"
     assert!(result["url"].as_str().unwrap().contains("?"));
 }
 
-// ========== WHITESPACE TOLERANCE ==========
+// ========== WHITESPACE TOLERANCE ========== 
 
 #[test]
 fn test_extra_whitespace() {
@@ -517,11 +517,11 @@ fn test_mixed_line_endings() {
     let result = parser.parse().unwrap();
 
     assert_eq!(result["host"], "localhost");
-    assert_eq!(result["port"], 8080.0);
+    assert_eq!(result["port"], 8080);
     assert_eq!(result["enabled"], true);
 }
 
-// ========== LARGE DATA SETS ==========
+// ========== LARGE DATA SETS ========== 
 
 #[test]
 fn test_many_rows() {
@@ -535,8 +535,8 @@ fn test_many_rows() {
 
     let rows = result.as_array().unwrap();
     assert_eq!(rows.len(), 100);
-    assert_eq!(rows[0]["id"], 1.0);
-    assert_eq!(rows[99]["id"], 100.0);
+    assert_eq!(rows[0]["id"], 1);
+    assert_eq!(rows[99]["id"], 100);
 }
 
 #[test]
@@ -558,8 +558,8 @@ fn test_many_fields() {
     let mut parser = Parser::new(&input);
     let result = parser.parse().unwrap();
 
-    assert_eq!(result["f1"], 1.0);
-    assert_eq!(result["f50"], 50.0);
+    assert_eq!(result["f1"], 1);
+    assert_eq!(result["f50"], 50);
 }
 
 // Total: 50+ comprehensive tests covering all major Tauq features

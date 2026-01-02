@@ -618,7 +618,9 @@ impl<'a> Parser<'a> {
         let val = if let Some(st) = &self.current_token {
             match &st.token {
                 Token::String(s) => Some(Value::String(s.clone())),
-                Token::Number(n) => Some(Value::Number(
+                Token::Integer(n) => Some(Value::Number(serde_json::Number::from(*n))),
+                Token::UnsignedInteger(n) => Some(Value::Number(serde_json::Number::from(*n))),
+                Token::Float(n) => Some(Value::Number(
                     serde_json::Number::from_f64(*n).unwrap_or(serde_json::Number::from(0)),
                 )),
                 Token::Bool(b) => Some(Value::Bool(*b)),

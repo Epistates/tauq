@@ -315,7 +315,15 @@ impl<'a> StreamingParser<'a> {
         };
 
         let value = match &st.token {
-            Token::Number(n) => {
+            Token::Integer(n) => {
+                self.advance();
+                Value::Number(serde_json::Number::from(*n))
+            }
+            Token::UnsignedInteger(n) => {
+                self.advance();
+                Value::Number(serde_json::Number::from(*n))
+            }
+            Token::Float(n) => {
                 self.advance();
                 Value::Number(
                     serde_json::Number::from_f64(*n).unwrap_or(serde_json::Number::from(0)),
@@ -461,7 +469,7 @@ mod tests {
         assert_eq!(records.len(), 3);
 
         let first = records[0].as_ref().unwrap();
-        assert_eq!(first["id"], 1.0);
+        assert_eq!(first["id"], 1);
         assert_eq!(first["name"], "Alice");
     }
 

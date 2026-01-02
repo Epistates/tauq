@@ -58,14 +58,14 @@ fn test_single_employee_roundtrip() {
     let result = compile_tauq(&tauq).expect("Failed to parse tauq");
 
     // Single row should be an object, not array
-    assert_eq!(result["id"], 1.0);
+    assert_eq!(result["id"], 1);
     assert_eq!(result["name"], "Alice A001");
-    assert_eq!(result["age"], 30.0);
+    assert_eq!(result["age"], 30);
     assert_eq!(result["city"], "NYC");
     assert_eq!(result["department"], "Engineering");
-    assert_eq!(result["salary"], 85000.0);
-    assert_eq!(result["experience"], 5.0);
-    assert_eq!(result["project_count"], 10.0);
+    assert_eq!(result["salary"], 85000);
+    assert_eq!(result["experience"], 5);
+    assert_eq!(result["project_count"], 10);
 }
 
 #[test]
@@ -83,19 +83,19 @@ fn test_multiple_employees_roundtrip() {
     assert_eq!(arr.len(), 3);
 
     // Check first employee
-    assert_eq!(arr[0]["id"], 1.0);
+    assert_eq!(arr[0]["id"], 1);
     assert_eq!(arr[0]["name"], "Alice A001");
     assert_eq!(arr[0]["department"], "Engineering");
 
     // Check second employee
-    assert_eq!(arr[1]["id"], 2.0);
+    assert_eq!(arr[1]["id"], 2);
     assert_eq!(arr[1]["name"], "Bob B002");
     assert_eq!(arr[1]["city"], "LA");
 
     // Check third employee
-    assert_eq!(arr[2]["id"], 3.0);
-    assert_eq!(arr[2]["salary"], 92000.0);
-    assert_eq!(arr[2]["experience"], 10.0);
+    assert_eq!(arr[2]["id"], 3);
+    assert_eq!(arr[2]["salary"], 92000);
+    assert_eq!(arr[2]["experience"], 10);
 }
 
 #[test]
@@ -127,8 +127,8 @@ fn test_large_employee_dataset() {
     assert_eq!(arr.len(), 100);
 
     // Verify first and last entries
-    assert_eq!(arr[0]["id"], 1.0);
-    assert_eq!(arr[99]["id"], 100.0);
+    assert_eq!(arr[0]["id"], 1);
+    assert_eq!(arr[99]["id"], 100);
 }
 
 // ============================================================================
@@ -137,7 +137,7 @@ fn test_large_employee_dataset() {
 
 #[test]
 fn test_names_with_special_characters() {
-    let tauq = r#"
+    let tauq = r#" 
 !def Employee id name city
 !use Employee
 1 "Alice O'Brien" NYC
@@ -155,7 +155,7 @@ fn test_names_with_special_characters() {
 
 #[test]
 fn test_unicode_names() {
-    let tauq = r#"
+    let tauq = r#" 
 !def Employee id name city
 !use Employee
 1 "José García" "México"
@@ -191,14 +191,14 @@ fn test_numeric_edge_cases() {
     let result = compile_tauq(tauq).expect("Failed to parse numbers");
     let arr = result.as_array().unwrap();
 
-    assert_eq!(arr[0]["value"], 0.0);
-    assert_eq!(arr[1]["value"], -1.0);
-    assert_eq!(arr[2]["value"], 999999999.0);
+    assert_eq!(arr[0]["value"], 0);
+    assert_eq!(arr[1]["value"], -1);
+    assert_eq!(arr[2]["value"], 999999999);
     assert!((arr[3]["value"].as_f64().unwrap() - 3.14159).abs() < 0.0001);
-    assert_eq!(arr[4]["value"], 1e10);
+    // 1e10 is parsed as f64 because it uses scientific notation
+    assert_eq!(arr[4]["value"], 1.0e10);
     assert!((arr[5]["value"].as_f64().unwrap() - (-0.0015)).abs() < 0.0001);
 }
-
 // ============================================================================
 // Schema Variations
 // ============================================================================
@@ -233,10 +233,9 @@ products [
     assert_eq!(products[0]["sku"], "SKU001");
     assert_eq!(products[1]["price"], 49.99);
 }
-
 #[test]
 fn test_nested_schema() {
-    let tauq = r#"
+    let tauq = r#" 
 !def Address street city
 !def Employee id name addr:Address
 !use Employee
@@ -264,9 +263,9 @@ fn test_minified_semicolon_separator() {
 
     let arr = result.as_array().unwrap();
     assert_eq!(arr.len(), 3);
-    assert_eq!(arr[0]["id"], 1.0);
+    assert_eq!(arr[0]["id"], 1);
     assert_eq!(arr[0]["name"], "Alice");
-    assert_eq!(arr[2]["age"], 35.0);
+    assert_eq!(arr[2]["age"], 35);
 }
 
 #[test]
@@ -274,7 +273,7 @@ fn test_minified_with_strings() {
     let tauq = r#"!def E name email; "Alice" "alice@test.com"; "Bob" "bob@test.com""#;
     let result = compile_tauq(tauq).expect("Failed to parse minified with strings");
 
-    let arr = result.as_array().unwrap();
+    let arr = result.as_array().expect("Result should be an array");
     assert_eq!(arr[0]["name"], "Alice");
     assert_eq!(arr[0]["email"], "alice@test.com");
     assert_eq!(arr[1]["name"], "Bob");
@@ -286,7 +285,7 @@ fn test_minified_with_strings() {
 
 #[test]
 fn test_config_style_map() {
-    let tauq = r#"
+    let tauq = r#" 
 host localhost
 port 8080
 debug true
@@ -297,15 +296,15 @@ timeout 30
     let result = compile_tauq(tauq).expect("Failed to parse config");
 
     assert_eq!(result["host"], "localhost");
-    assert_eq!(result["port"], 8080.0);
+    assert_eq!(result["port"], 8080);
     assert_eq!(result["debug"], true);
     assert_eq!(result["version"], "1.0.0");
-    assert_eq!(result["timeout"], 30.0);
+    assert_eq!(result["timeout"], 30);
 }
 
 #[test]
 fn test_map_with_arrays() {
-    let tauq = r#"
+    let tauq = r#" 
 name "MyService"
 ports [8080 8443 9090]
 features [api websocket metrics]
@@ -314,7 +313,7 @@ features [api websocket metrics]
     let result = compile_tauq(tauq).expect("Failed to parse map with arrays");
 
     assert_eq!(result["name"], "MyService");
-    assert_eq!(result["ports"], json!([8080.0, 8443.0, 9090.0]));
+    assert_eq!(result["ports"], json!([8080, 8443, 9090]));
     assert_eq!(result["features"], json!(["api", "websocket", "metrics"]));
 }
 
@@ -325,7 +324,7 @@ features [api websocket metrics]
 #[test]
 fn test_tauqq_basic_preprocessor() {
     // TauqQ processes !def and !use as a preprocessor
-    let tauq = r#"
+    let tauq = r#" 
 !def Employee id name
 !use Employee
 1 Alice
@@ -342,7 +341,7 @@ fn test_tauqq_basic_preprocessor() {
 #[test]
 fn test_tauqq_with_triple_dash() {
     // TauqQ handles --- separator for document sections
-    let tauq = r#"
+    let tauq = r#" 
 !def Config key value
 ---
 settings [
@@ -358,7 +357,7 @@ settings [
     assert_eq!(settings[0]["key"], "host");
     assert_eq!(settings[0]["value"], "localhost");
     assert_eq!(settings[1]["key"], "port");
-    assert_eq!(settings[1]["value"], 8080.0);
+    assert_eq!(settings[1]["value"], 8080);
 }
 
 // ============================================================================
@@ -380,9 +379,9 @@ fn test_many_fields() {
     let tauq = format!("{}\n{}\n{}", def_line, use_line, data_line);
     let result = compile_tauq(&tauq).expect("Failed to parse many fields");
 
-    assert_eq!(result["f1"], 1.0);
-    assert_eq!(result["f10"], 10.0);
-    assert_eq!(result["f20"], 20.0);
+    assert_eq!(result["f1"], 1);
+    assert_eq!(result["f10"], 10);
+    assert_eq!(result["f20"], 20);
 }
 
 #[test]
@@ -392,10 +391,10 @@ fn test_deeply_nested_arrays() {
 
     // Navigate to deeply nested value
     let val = &result["matrix"][0][0][0][0];
-    assert_eq!(*val, 1.0);
+    assert_eq!(*val, 1);
 
     let val2 = &result["matrix"][1][1][1][1];
-    assert_eq!(*val2, 16.0);
+    assert_eq!(*val2, 16);
 }
 
 #[test]
@@ -404,7 +403,8 @@ fn test_long_string_values() {
     let tauq = format!(r#"message "{}""#, long_str);
     let result = compile_tauq(&tauq).expect("Failed to parse long string");
 
-    assert_eq!(result["message"].as_str().unwrap().len(), 1000);
+    let msg = result["message"].as_str().expect("message should be a string");
+    assert_eq!(msg.len(), 1000);
 }
 
 // ============================================================================
@@ -413,7 +413,7 @@ fn test_long_string_values() {
 
 #[test]
 fn test_comments_preserved_behavior() {
-    let tauq = r#"
+    let tauq = r#" 
 # This is a header comment
 host localhost # inline comment
 # Another comment
@@ -424,7 +424,7 @@ port 8080
     let result = compile_tauq(tauq).expect("Failed to parse with comments");
 
     assert_eq!(result["host"], "localhost");
-    assert_eq!(result["port"], 8080.0);
+    assert_eq!(result["port"], 8080);
 }
 
 // ============================================================================
@@ -440,7 +440,7 @@ fn test_invalid_use_without_def() {
 
 #[test]
 fn test_unclosed_string() {
-    let tauq = r#"name "Alice"#;  // Missing closing quote
+    let tauq = r#"name \"Alice"#;  // Missing closing quote
     // Parser should either handle gracefully or return error
     // This is more of a parse robustness test
     let _result = compile_tauq(tauq);
@@ -467,7 +467,7 @@ fn test_whitespace_only() {
 #[test]
 fn test_benchmark_employee_format() {
     // This is the exact format the LLM benchmark generates
-    let tauq = r#"
+    let tauq = r#" 
 !def Employee id name age city department salary experience project_count
 !use Employee
 1 "Alice A001" 30 NYC Engineering 85000 5 10
@@ -484,16 +484,16 @@ fn test_benchmark_employee_format() {
 
     // Verify all 8 fields are present and correct
     let emp1 = &arr[0];
-    assert_eq!(emp1["id"], 1.0);
+    assert_eq!(emp1["id"], 1);
     assert_eq!(emp1["name"], "Alice A001");
-    assert_eq!(emp1["age"], 30.0);
+    assert_eq!(emp1["age"], 30);
     assert_eq!(emp1["city"], "NYC");
     assert_eq!(emp1["department"], "Engineering");
-    assert_eq!(emp1["salary"], 85000.0);
-    assert_eq!(emp1["experience"], 5.0);
-    assert_eq!(emp1["project_count"], 10.0);
+    assert_eq!(emp1["salary"], 85000);
+    assert_eq!(emp1["experience"], 5);
+    assert_eq!(emp1["project_count"], 10);
 
     // Verify edge case employee (0 experience)
     let emp5 = &arr[4];
-    assert_eq!(emp5["experience"], 0.0);
+    assert_eq!(emp5["experience"], 0);
 }
