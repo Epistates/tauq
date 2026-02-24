@@ -1,0 +1,27 @@
+[package]
+name = "tauq-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.tauq]
+path = ".."
+features = ["performance"]  # Fuzz with performance features enabled
+
+[[bin]]
+name = "fuzz_parser"
+path = "fuzz_targets/fuzz_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_tbf"
+path = "fuzz_targets/fuzz_tbf.rs"
+test = false
+doc = false

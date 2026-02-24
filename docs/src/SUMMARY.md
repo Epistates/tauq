@@ -26,3 +26,4 @@
     - [Tauq Binary Format (TBF)](spec/tbf_spec.md)
     - [Comparison vs JSON](spec/comparison.md)
     - [TBF vs Protobuf](comparison-protobuf.md)
+- [Security & Robustness](security.md)

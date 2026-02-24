@@ -1,0 +1,28 @@
+name: Fuzzing Smoke Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Nightly Rust
+      uses: dtolnay/rust-toolchain@nightly
+
+    - name: Install cargo-fuzz
+      run: cargo install cargo-fuzz
+
+    - name: Smoke Test Fuzz Targets
+      run: |
+        # Run each target for 10 seconds to ensure they build and don't immediately crash
+        cargo fuzz run fuzz_parser -- -max_total_time=10
+        cargo fuzz run fuzz_tbf -- -max_total_time=10
