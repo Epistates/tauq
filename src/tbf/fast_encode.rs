@@ -8,7 +8,6 @@
 
 use ahash::RandomState;
 
-
 // =============================================================================
 // Fast String Dictionary
 // =============================================================================
@@ -152,10 +151,7 @@ pub fn fast_encode_varint(value: u64, buf: &mut Vec<u8>) {
 
     // Fast path for 2-byte values (128-16383)
     if value < 16384 {
-        buf.extend_from_slice(&[
-            (value as u8) | 0x80,
-            (value >> 7) as u8,
-        ]);
+        buf.extend_from_slice(&[(value as u8) | 0x80, (value >> 7) as u8]);
         return;
     }
 
@@ -308,7 +304,7 @@ pub trait FastEncode {
 
 /// Encode a slice with optimizations
 pub fn fast_encode_slice<T: FastEncode>(items: &[T]) -> Vec<u8> {
-    use super::{TBF_MAGIC, TBF_VERSION, FLAG_DICTIONARY};
+    use super::{FLAG_DICTIONARY, TBF_MAGIC, TBF_VERSION};
 
     if items.is_empty() {
         let mut result = Vec::with_capacity(16);
@@ -368,7 +364,9 @@ impl FastEncode for bool {
     fn fast_encode_to(&self, buf: &mut FastBuffer, _dict: &mut FastStringDictionary) {
         buf.write_bool(*self);
     }
-    fn estimated_size(&self) -> usize { 1 }
+    fn estimated_size(&self) -> usize {
+        1
+    }
 }
 
 impl FastEncode for u32 {
@@ -376,7 +374,9 @@ impl FastEncode for u32 {
     fn fast_encode_to(&self, buf: &mut FastBuffer, _dict: &mut FastStringDictionary) {
         buf.write_u32(*self);
     }
-    fn estimated_size(&self) -> usize { 5 }
+    fn estimated_size(&self) -> usize {
+        5
+    }
 }
 
 impl FastEncode for u64 {
@@ -384,7 +384,9 @@ impl FastEncode for u64 {
     fn fast_encode_to(&self, buf: &mut FastBuffer, _dict: &mut FastStringDictionary) {
         buf.write_u64(*self);
     }
-    fn estimated_size(&self) -> usize { 10 }
+    fn estimated_size(&self) -> usize {
+        10
+    }
 }
 
 impl FastEncode for i32 {
@@ -392,7 +394,9 @@ impl FastEncode for i32 {
     fn fast_encode_to(&self, buf: &mut FastBuffer, _dict: &mut FastStringDictionary) {
         buf.write_i32(*self);
     }
-    fn estimated_size(&self) -> usize { 5 }
+    fn estimated_size(&self) -> usize {
+        5
+    }
 }
 
 impl FastEncode for i64 {
@@ -400,7 +404,9 @@ impl FastEncode for i64 {
     fn fast_encode_to(&self, buf: &mut FastBuffer, _dict: &mut FastStringDictionary) {
         buf.write_i64(*self);
     }
-    fn estimated_size(&self) -> usize { 10 }
+    fn estimated_size(&self) -> usize {
+        10
+    }
 }
 
 impl FastEncode for f32 {
@@ -408,7 +414,9 @@ impl FastEncode for f32 {
     fn fast_encode_to(&self, buf: &mut FastBuffer, _dict: &mut FastStringDictionary) {
         buf.write_f32(*self);
     }
-    fn estimated_size(&self) -> usize { 4 }
+    fn estimated_size(&self) -> usize {
+        4
+    }
 }
 
 impl FastEncode for f64 {
@@ -416,7 +424,9 @@ impl FastEncode for f64 {
     fn fast_encode_to(&self, buf: &mut FastBuffer, _dict: &mut FastStringDictionary) {
         buf.write_f64(*self);
     }
-    fn estimated_size(&self) -> usize { 8 }
+    fn estimated_size(&self) -> usize {
+        8
+    }
 }
 
 impl FastEncode for String {
@@ -424,7 +434,9 @@ impl FastEncode for String {
     fn fast_encode_to(&self, buf: &mut FastBuffer, dict: &mut FastStringDictionary) {
         buf.write_string(self, dict);
     }
-    fn estimated_size(&self) -> usize { 2 }
+    fn estimated_size(&self) -> usize {
+        2
+    }
 }
 
 impl FastEncode for &str {
@@ -432,7 +444,9 @@ impl FastEncode for &str {
     fn fast_encode_to(&self, buf: &mut FastBuffer, dict: &mut FastStringDictionary) {
         buf.write_string(self, dict);
     }
-    fn estimated_size(&self) -> usize { 2 }
+    fn estimated_size(&self) -> usize {
+        2
+    }
 }
 
 #[cfg(test)]

@@ -9,9 +9,8 @@
 //!
 //! Trade-off: Requires hashing all values during encoding
 
-use super::varint::{encode_varint, decode_varint};
-use crate::error::{TauqError, InterpretError};
-use std::collections::hash_map::DefaultHasher;
+use super::varint::{decode_varint, encode_varint};
+use crate::error::{InterpretError, TauqError};
 use std::hash::Hasher;
 
 /// Bloom filter for fast membership testing
@@ -25,6 +24,9 @@ pub struct BloomFilter {
 
     /// Number of distinct items added
     num_items: u32,
+
+    /// Per-instance random seed for hash unpredictability
+    seed: u64,
 }
 
 impl BloomFilter {
@@ -48,19 +50,33 @@ impl BloomFilter {
         let k = (num_bits as f32 / (num_items as f32)) * std::f32::consts::LN_2;
         let hash_functions = (k.round() as u8).clamp(1, 4); // Use 1-4 hash functions
 
+        // Generate a random seed for this filter instance
+        let seed = {
+            // Use a simple entropy source: address of the allocation + a counter
+            // This is not cryptographic but makes filter hashes unpredictable across instances
+            use std::time::SystemTime;
+            let t = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|d| d.as_nanos() as u64)
+                .unwrap_or(0x517cc1b727220a95);
+            t ^ (num_bytes as u64).wrapping_mul(0x9e3779b97f4a7c15)
+        };
+
         Self {
             bits: vec![0; num_bytes],
             hash_functions,
             num_items: 0,
+            seed,
         }
     }
 
     /// Create from raw bitmap data
-    pub fn from_bytes(bits: Vec<u8>, hash_functions: u8, num_items: u32) -> Self {
+    pub fn from_bytes(bits: Vec<u8>, hash_functions: u8, num_items: u32, seed: u64) -> Self {
         Self {
             bits,
             hash_functions,
             num_items,
+            seed,
         }
     }
 
@@ -101,6 +117,7 @@ impl BloomFilter {
 
         buffer.push(self.hash_functions);
         encode_varint(self.num_items as u64, &mut buffer);
+        buffer.extend_from_slice(&self.seed.to_le_bytes());
         encode_varint(self.bits.len() as u64, &mut buffer);
         buffer.extend_from_slice(&self.bits);
 
@@ -110,9 +127,9 @@ impl BloomFilter {
     /// Decode filter from bytes
     pub fn decode(bytes: &[u8]) -> Result<(Self, usize), TauqError> {
         if bytes.is_empty() {
-            return Err(TauqError::Interpret(
-                InterpretError::new("Cannot decode bloom filter: empty buffer"),
-            ));
+            return Err(TauqError::Interpret(InterpretError::new(
+                "Cannot decode bloom filter: empty buffer",
+            )));
         }
 
         let mut offset = 0;
@@ -123,14 +140,22 @@ impl BloomFilter {
         let (num_items, size) = decode_varint(&bytes[offset..])?;
         offset += size;
 
+        if bytes.len() < offset + 8 {
+            return Err(TauqError::Interpret(InterpretError::new(
+                "Not enough bytes to decode bloom filter seed",
+            )));
+        }
+        let seed = u64::from_le_bytes(bytes[offset..offset + 8].try_into().unwrap());
+        offset += 8;
+
         let (bits_len, size) = decode_varint(&bytes[offset..])?;
         offset += size;
 
         let bits_len = bits_len as usize;
         if bytes.len() < offset + bits_len {
-            return Err(TauqError::Interpret(
-                InterpretError::new("Not enough bytes to decode bloom filter"),
-            ));
+            return Err(TauqError::Interpret(InterpretError::new(
+                "Not enough bytes to decode bloom filter",
+            )));
         }
 
         let bits = bytes[offset..offset + bits_len].to_vec();
@@ -140,6 +165,7 @@ impl BloomFilter {
                 bits,
                 hash_functions,
                 num_items: num_items as u32,
+                seed,
             },
             offset + bits_len,
         ))
@@ -150,10 +176,10 @@ impl BloomFilter {
         self.num_items
     }
 
-    /// Hash value with seed
-    fn hash(&self, value: &str, seed: u64) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        hasher.write_u64(seed);
+    /// Hash value with per-instance seed + hash function index
+    fn hash(&self, value: &str, hash_fn_index: u64) -> u64 {
+        let mut hasher = ahash::AHasher::default();
+        hasher.write_u64(self.seed.wrapping_add(hash_fn_index));
         hasher.write(value.as_bytes());
         hasher.finish()
     }

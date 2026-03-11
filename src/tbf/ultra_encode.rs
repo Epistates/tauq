@@ -41,18 +41,10 @@ impl Drop for UltraBuffer {
     fn drop(&mut self) {
         // Convert back to Vec for proper deallocation
         unsafe {
-            let _ = Vec::from_raw_parts(
-                self.start,
-                self.len(),
-                self.capacity(),
-            );
+            let _ = Vec::from_raw_parts(self.start, self.len(), self.capacity());
         }
     }
 }
-
-// Safety: Same bounds as Vec<u8>
-unsafe impl Send for UltraBuffer {}
-unsafe impl Sync for UltraBuffer {}
 
 impl UltraBuffer {
     /// Create empty buffer
@@ -111,9 +103,7 @@ impl UltraBuffer {
     /// Convert to Vec (consumes buffer)
     #[inline]
     pub fn into_vec(self) -> Vec<u8> {
-        let vec = unsafe {
-            Vec::from_raw_parts(self.start, self.len(), self.capacity())
-        };
+        let vec = unsafe { Vec::from_raw_parts(self.start, self.len(), self.capacity()) };
         std::mem::forget(self); // Don't run Drop
         vec
     }
@@ -135,17 +125,19 @@ impl UltraBuffer {
     #[inline(never)]
     fn reserve_slow(&mut self, additional: usize) {
         // Convert to Vec, reserve, convert back
+        // Safety: We must ensure the Vec is forgotten even if reserve panics.
+        // We use ManuallyDrop to prevent the Vec from deallocating on panic
+        // while our pointers still reference the memory.
         let len = self.len();
         let cap = self.capacity();
-        let mut vec = unsafe {
-            Vec::from_raw_parts(self.start, len, cap)
-        };
+        let mut vec =
+            std::mem::ManuallyDrop::new(unsafe { Vec::from_raw_parts(self.start, len, cap) });
         vec.reserve(additional);
 
         self.start = vec.as_mut_ptr();
         self.end = unsafe { self.start.add(len) };
         self.capacity = unsafe { self.start.add(vec.capacity()) };
-        std::mem::forget(vec);
+        // Don't drop the Vec — we own the allocation via raw pointers
     }
 
     /// Push single byte - UNCHECKED
@@ -178,14 +170,18 @@ impl UltraBuffer {
     #[inline(always)]
     pub fn push(&mut self, byte: u8) {
         self.reserve(1);
-        unsafe { self.push_unchecked(byte); }
+        unsafe {
+            self.push_unchecked(byte);
+        }
     }
 
     /// Extend from slice - checked (reserves if needed)
     #[inline(always)]
     pub fn extend(&mut self, bytes: &[u8]) {
         self.reserve(bytes.len());
-        unsafe { self.extend_unchecked(bytes); }
+        unsafe {
+            self.extend_unchecked(bytes);
+        }
     }
 
     /// Get end pointer for direct writes
@@ -332,7 +328,11 @@ pub fn pack_u32_adaptive(values: &[u32], buf: &mut UltraBuffer) -> (IntPacking, 
 
     // Only use offset if it improves packing and array is large enough
     let use_offset = offset_packing > basic_packing && values.len() > 5;
-    let packing = if use_offset { offset_packing } else { basic_packing };
+    let packing = if use_offset {
+        offset_packing
+    } else {
+        basic_packing
+    };
 
     // Reserve space: 1 byte header + optional 4 byte offset + packed data
     let data_size = values.len() * packing.bytes_per_value();
@@ -341,11 +341,15 @@ pub fn pack_u32_adaptive(values: &[u32], buf: &mut UltraBuffer) -> (IntPacking, 
 
     // Write header: packing (2 bits) + offset_flag (1 bit)
     let header = (packing as u8) << 1 | (use_offset as u8);
-    unsafe { buf.push_unchecked(header); }
+    unsafe {
+        buf.push_unchecked(header);
+    }
 
     // Write offset if used
     if use_offset {
-        unsafe { buf.extend_unchecked(&min.to_le_bytes()); }
+        unsafe {
+            buf.extend_unchecked(&min.to_le_bytes());
+        }
     }
 
     // Pack values
@@ -354,11 +358,15 @@ pub fn pack_u32_adaptive(values: &[u32], buf: &mut UltraBuffer) -> (IntPacking, 
             buf.reserve(values.len());
             if use_offset {
                 for &v in values {
-                    unsafe { buf.push_unchecked((v.wrapping_sub(min)) as u8); }
+                    unsafe {
+                        buf.push_unchecked((v.wrapping_sub(min)) as u8);
+                    }
                 }
             } else {
                 for &v in values {
-                    unsafe { buf.push_unchecked(v as u8); }
+                    unsafe {
+                        buf.push_unchecked(v as u8);
+                    }
                 }
             }
         }
@@ -366,11 +374,15 @@ pub fn pack_u32_adaptive(values: &[u32], buf: &mut UltraBuffer) -> (IntPacking, 
             buf.reserve(values.len() * 2);
             if use_offset {
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&(v.wrapping_sub(min) as u16).to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&(v.wrapping_sub(min) as u16).to_le_bytes());
+                    }
                 }
             } else {
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&(v as u16).to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&(v as u16).to_le_bytes());
+                    }
                 }
             }
         }
@@ -378,21 +390,23 @@ pub fn pack_u32_adaptive(values: &[u32], buf: &mut UltraBuffer) -> (IntPacking, 
             buf.reserve(values.len() * 4);
             if use_offset {
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&v.wrapping_sub(min).to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&v.wrapping_sub(min).to_le_bytes());
+                    }
                 }
             } else {
                 // Direct copy for native endian (most systems are little-endian)
                 #[cfg(target_endian = "little")]
                 unsafe {
-                    let bytes = std::slice::from_raw_parts(
-                        values.as_ptr() as *const u8,
-                        values.len() * 4
-                    );
+                    let bytes =
+                        std::slice::from_raw_parts(values.as_ptr() as *const u8, values.len() * 4);
                     buf.extend_unchecked(bytes);
                 }
                 #[cfg(target_endian = "big")]
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&v.to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&v.to_le_bytes());
+                    }
                 }
             }
         }
@@ -414,17 +428,25 @@ pub fn pack_u64_adaptive(values: &[u64], buf: &mut UltraBuffer) -> (IntPacking, 
     let offset_packing = IntPacking::from_max_u64(range);
 
     let use_offset = offset_packing > basic_packing && values.len() > 5;
-    let packing = if use_offset { offset_packing } else { basic_packing };
+    let packing = if use_offset {
+        offset_packing
+    } else {
+        basic_packing
+    };
 
     let data_size = values.len() * packing.bytes_per_value();
     let header_size = 1 + if use_offset { 8 } else { 0 };
     buf.reserve(header_size + data_size);
 
     let header = (packing as u8) << 1 | (use_offset as u8);
-    unsafe { buf.push_unchecked(header); }
+    unsafe {
+        buf.push_unchecked(header);
+    }
 
     if use_offset {
-        unsafe { buf.extend_unchecked(&min.to_le_bytes()); }
+        unsafe {
+            buf.extend_unchecked(&min.to_le_bytes());
+        }
     }
 
     match packing {
@@ -432,11 +454,15 @@ pub fn pack_u64_adaptive(values: &[u64], buf: &mut UltraBuffer) -> (IntPacking, 
             buf.reserve(values.len());
             if use_offset {
                 for &v in values {
-                    unsafe { buf.push_unchecked((v.wrapping_sub(min)) as u8); }
+                    unsafe {
+                        buf.push_unchecked((v.wrapping_sub(min)) as u8);
+                    }
                 }
             } else {
                 for &v in values {
-                    unsafe { buf.push_unchecked(v as u8); }
+                    unsafe {
+                        buf.push_unchecked(v as u8);
+                    }
                 }
             }
         }
@@ -444,11 +470,15 @@ pub fn pack_u64_adaptive(values: &[u64], buf: &mut UltraBuffer) -> (IntPacking, 
             buf.reserve(values.len() * 2);
             if use_offset {
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&(v.wrapping_sub(min) as u16).to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&(v.wrapping_sub(min) as u16).to_le_bytes());
+                    }
                 }
             } else {
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&(v as u16).to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&(v as u16).to_le_bytes());
+                    }
                 }
             }
         }
@@ -456,11 +486,15 @@ pub fn pack_u64_adaptive(values: &[u64], buf: &mut UltraBuffer) -> (IntPacking, 
             buf.reserve(values.len() * 4);
             if use_offset {
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&(v.wrapping_sub(min) as u32).to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&(v.wrapping_sub(min) as u32).to_le_bytes());
+                    }
                 }
             } else {
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&(v as u32).to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&(v as u32).to_le_bytes());
+                    }
                 }
             }
         }
@@ -468,20 +502,22 @@ pub fn pack_u64_adaptive(values: &[u64], buf: &mut UltraBuffer) -> (IntPacking, 
             buf.reserve(values.len() * 8);
             if use_offset {
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&v.wrapping_sub(min).to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&v.wrapping_sub(min).to_le_bytes());
+                    }
                 }
             } else {
                 #[cfg(target_endian = "little")]
                 unsafe {
-                    let bytes = std::slice::from_raw_parts(
-                        values.as_ptr() as *const u8,
-                        values.len() * 8
-                    );
+                    let bytes =
+                        std::slice::from_raw_parts(values.as_ptr() as *const u8, values.len() * 8);
                     buf.extend_unchecked(bytes);
                 }
                 #[cfg(target_endian = "big")]
                 for &v in values {
-                    unsafe { buf.extend_unchecked(&v.to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&v.to_le_bytes());
+                    }
                 }
             }
         }
@@ -497,6 +533,7 @@ pub fn pack_u64_adaptive(values: &[u64], buf: &mut UltraBuffer) -> (IntPacking, 
 /// Encode strings inline (length-prefixed, no dictionary)
 ///
 /// This is faster for serialization when strings are mostly unique.
+#[allow(dead_code)]
 pub fn encode_strings_inline(strings: &[&str], buf: &mut UltraBuffer) {
     // Calculate total size
     let total_len: usize = strings.iter().map(|s| s.len()).sum();
@@ -507,7 +544,9 @@ pub fn encode_strings_inline(strings: &[&str], buf: &mut UltraBuffer) {
         let len = s.len();
         // Encode length as varint (inline for speed)
         if len < 128 {
-            unsafe { buf.push_unchecked(len as u8); }
+            unsafe {
+                buf.push_unchecked(len as u8);
+            }
         } else if len < 16384 {
             unsafe {
                 buf.push_unchecked((len as u8) | 0x80);
@@ -518,7 +557,9 @@ pub fn encode_strings_inline(strings: &[&str], buf: &mut UltraBuffer) {
             encode_varint_to_ultra(len as u64, buf);
         }
         // Copy string bytes
-        unsafe { buf.extend_unchecked(s.as_bytes()); }
+        unsafe {
+            buf.extend_unchecked(s.as_bytes());
+        }
     }
 }
 
@@ -527,10 +568,14 @@ pub fn encode_strings_inline(strings: &[&str], buf: &mut UltraBuffer) {
 pub fn encode_varint_to_ultra(mut value: u64, buf: &mut UltraBuffer) {
     buf.reserve(10); // Max varint size
     while value >= 0x80 {
-        unsafe { buf.push_unchecked((value as u8) | 0x80); }
+        unsafe {
+            buf.push_unchecked((value as u8) | 0x80);
+        }
         value >>= 7;
     }
-    unsafe { buf.push_unchecked(value as u8); }
+    unsafe {
+        buf.push_unchecked(value as u8);
+    }
 }
 
 // =============================================================================
@@ -551,10 +596,15 @@ pub trait UltraEncode {
     fn column_count() -> usize;
 
     /// Collect all values for each column from a slice of items
-    fn collect_columns(items: &[Self], collectors: &mut ColumnCollectors) where Self: Sized;
+    fn collect_columns(items: &[Self], collectors: &mut ColumnCollectors)
+    where
+        Self: Sized;
 
     /// Encode a slice of items to bytes
-    fn ultra_encode_slice(items: &[Self]) -> Vec<u8> where Self: Sized {
+    fn ultra_encode_slice(items: &[Self]) -> Vec<u8>
+    where
+        Self: Sized,
+    {
         if items.is_empty() {
             let mut buf = UltraBuffer::with_capacity(16);
             buf.extend(&ULTRA_MAGIC);
@@ -603,7 +653,9 @@ impl DirectU32Encoder {
     /// Create a new encoder with specified capacity
     #[inline]
     pub fn with_capacity(cap: usize) -> Self {
-        Self { values: Vec::with_capacity(cap) }
+        Self {
+            values: Vec::with_capacity(cap),
+        }
     }
 
     /// Push a u32 value to the encoder
@@ -643,7 +695,9 @@ impl DirectStringEncoder {
 
         // Inline varint for length
         if len < 128 {
-            unsafe { self.data.push_unchecked(len as u8); }
+            unsafe {
+                self.data.push_unchecked(len as u8);
+            }
         } else if len < 16384 {
             unsafe {
                 self.data.push_unchecked((len as u8) | 0x80);
@@ -652,7 +706,9 @@ impl DirectStringEncoder {
         } else {
             encode_varint_to_ultra(len as u64, &mut self.data);
         }
-        unsafe { self.data.extend_unchecked(s.as_bytes()); }
+        unsafe {
+            self.data.extend_unchecked(s.as_bytes());
+        }
         self.count += 1;
     }
 
@@ -666,7 +722,9 @@ impl DirectStringEncoder {
 /// Trait for direct encoding without intermediate collection
 pub trait UltraEncodeDirect {
     /// Encode directly to buffer with no intermediate allocations
-    fn ultra_encode_direct(items: &[Self]) -> Vec<u8> where Self: Sized;
+    fn ultra_encode_direct(items: &[Self]) -> Vec<u8>
+    where
+        Self: Sized;
 }
 
 /// Column data type tags
@@ -818,7 +876,8 @@ impl ColumnCollectors {
                 ColumnData::I32(values) => {
                     buf.push(ColumnType::I32 as u8);
                     // Encode as u32 with zigzag
-                    let unsigned: Vec<u32> = values.iter()
+                    let unsigned: Vec<u32> = values
+                        .iter()
                         .map(|&v| ((v << 1) ^ (v >> 31)) as u32)
                         .collect();
                     pack_u32_adaptive(&unsigned, buf);
@@ -826,7 +885,8 @@ impl ColumnCollectors {
                 ColumnData::I64(values) => {
                     buf.push(ColumnType::I64 as u8);
                     // Encode as u64 with zigzag
-                    let unsigned: Vec<u64> = values.iter()
+                    let unsigned: Vec<u64> = values
+                        .iter()
                         .map(|&v| ((v << 1) ^ (v >> 63)) as u64)
                         .collect();
                     pack_u64_adaptive(&unsigned, buf);
@@ -857,15 +917,14 @@ fn encode_f32_column(values: &[f32], buf: &mut UltraBuffer) {
     buf.reserve(values.len() * 4);
     #[cfg(target_endian = "little")]
     unsafe {
-        let bytes = std::slice::from_raw_parts(
-            values.as_ptr() as *const u8,
-            values.len() * 4
-        );
+        let bytes = std::slice::from_raw_parts(values.as_ptr() as *const u8, values.len() * 4);
         buf.extend_unchecked(bytes);
     }
     #[cfg(target_endian = "big")]
     for &v in values {
-        unsafe { buf.extend_unchecked(&v.to_le_bytes()); }
+        unsafe {
+            buf.extend_unchecked(&v.to_le_bytes());
+        }
     }
 }
 
@@ -874,15 +933,14 @@ fn encode_f64_column(values: &[f64], buf: &mut UltraBuffer) {
     buf.reserve(values.len() * 8);
     #[cfg(target_endian = "little")]
     unsafe {
-        let bytes = std::slice::from_raw_parts(
-            values.as_ptr() as *const u8,
-            values.len() * 8
-        );
+        let bytes = std::slice::from_raw_parts(values.as_ptr() as *const u8, values.len() * 8);
         buf.extend_unchecked(bytes);
     }
     #[cfg(target_endian = "big")]
     for &v in values {
-        unsafe { buf.extend_unchecked(&v.to_le_bytes()); }
+        unsafe {
+            buf.extend_unchecked(&v.to_le_bytes());
+        }
     }
 }
 
@@ -899,7 +957,9 @@ fn encode_bool_column(values: &[bool], buf: &mut UltraBuffer) {
                 byte |= 1 << i;
             }
         }
-        unsafe { buf.push_unchecked(byte); }
+        unsafe {
+            buf.push_unchecked(byte);
+        }
     }
 }
 
@@ -914,7 +974,9 @@ fn encode_string_column(values: &[String], buf: &mut UltraBuffer) {
     for s in values {
         let len = s.len();
         if len < 128 {
-            unsafe { buf.push_unchecked(len as u8); }
+            unsafe {
+                buf.push_unchecked(len as u8);
+            }
         } else if len < 16384 {
             unsafe {
                 buf.push_unchecked((len as u8) | 0x80);
@@ -923,7 +985,9 @@ fn encode_string_column(values: &[String], buf: &mut UltraBuffer) {
         } else {
             encode_varint_to_ultra(len as u64, buf);
         }
-        unsafe { buf.extend_unchecked(s.as_bytes()); }
+        unsafe {
+            buf.extend_unchecked(s.as_bytes());
+        }
     }
 }
 

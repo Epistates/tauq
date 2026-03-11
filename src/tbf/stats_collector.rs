@@ -6,11 +6,11 @@
 //! - Cardinality estimation (for planning)
 //! - Data profiling (understand distribution)
 
-use super::stats::ColumnStats;
 use super::bitmap::NullBitmap;
+use super::stats::ColumnStats;
 use crate::error::TauqError;
-use std::collections::HashMap;
 use serde_json::Value;
+use std::collections::HashMap;
 
 /// Collects statistics for multiple columns
 #[derive(Debug, Clone)]
@@ -113,7 +113,7 @@ impl StatisticsCollector {
 
         // Write footer marker and version
         buffer.push(0xF1); // Footer marker
-        buffer.push(1);    // Version
+        buffer.push(1); // Version
 
         // Write statistics count
         let count = self.columns.len() as u64;

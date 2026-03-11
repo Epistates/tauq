@@ -16,8 +16,8 @@
 //! Bit 1 = not null, Bit 0 = null
 //! ```
 
-use super::varint::{encode_varint, decode_varint};
-use crate::error::{TauqError, InterpretError};
+use super::varint::{decode_varint, encode_varint};
+use crate::error::{InterpretError, TauqError};
 
 /// Null bitmap for efficient null value encoding
 #[derive(Debug, Clone)]
@@ -105,7 +105,8 @@ impl NullBitmap {
     /// Count null values in bitmap
     pub fn null_count(&self) -> usize {
         let total_bits = self.len;
-        let set_bits: usize = self.bits
+        let set_bits: usize = self
+            .bits
             .iter()
             .take(self.len.div_ceil(8))
             .map(|b| b.count_ones() as usize)
@@ -144,9 +145,9 @@ impl NullBitmap {
 
         let bytes_needed = len.div_ceil(8);
         if bytes.len() < varint_size + bytes_needed {
-            return Err(TauqError::Interpret(
-                InterpretError::new("Not enough bytes to decode null bitmap"),
-            ));
+            return Err(TauqError::Interpret(InterpretError::new(
+                "Not enough bytes to decode null bitmap",
+            )));
         }
 
         let bitmap_bytes = bytes[varint_size..varint_size + bytes_needed].to_vec();
@@ -248,9 +249,9 @@ mod tests {
         let mut bitmap = NullBitmap::new(16);
 
         bitmap.push_not_null(); // 0: not null
-        bitmap.push_null();      // 1: null
+        bitmap.push_null(); // 1: null
         bitmap.push_not_null(); // 2: not null
-        bitmap.push_null();      // 3: null
+        bitmap.push_null(); // 3: null
 
         assert!(!bitmap.is_null(0));
         assert!(bitmap.is_null(1));

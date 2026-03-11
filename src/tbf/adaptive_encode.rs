@@ -69,10 +69,8 @@ impl CodecAnalyzer {
         }
 
         // Filter out nulls for analysis
-        let non_null_samples: Vec<&Value> = self.samples
-            .iter()
-            .filter_map(|v| v.as_ref())
-            .collect();
+        let non_null_samples: Vec<&Value> =
+            self.samples.iter().filter_map(|v| v.as_ref()).collect();
 
         if non_null_samples.is_empty() {
             return CompressionCodec::Raw;
@@ -161,7 +159,8 @@ impl CodecAnalyzer {
         }
 
         // Count unique values and their frequencies
-        let mut unique_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        let mut unique_counts: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
         // First pass: collect unique values to check cardinality
         for val in values {
             *unique_counts.entry(val.to_string()).or_insert(0) += 1;
@@ -453,12 +452,10 @@ mod tests {
         assert_eq!(encoder.indices(), &[0, 1, 0, 2]);
 
         let reconstructed = encoder.decode();
-        assert_eq!(reconstructed, vec![
-            json!("alice"),
-            json!("bob"),
-            json!("alice"),
-            json!("carol"),
-        ]);
+        assert_eq!(
+            reconstructed,
+            vec![json!("alice"), json!("bob"), json!("alice"), json!("carol"),]
+        );
     }
 
     #[test]
@@ -478,11 +475,17 @@ mod tests {
         assert_eq!(encoder.runs()[2].count, 1);
 
         let reconstructed = encoder.decode();
-        assert_eq!(reconstructed, vec![
-            json!(true), json!(true), json!(true),
-            json!(false), json!(false),
-            json!(true),
-        ]);
+        assert_eq!(
+            reconstructed,
+            vec![
+                json!(true),
+                json!(true),
+                json!(true),
+                json!(false),
+                json!(false),
+                json!(true),
+            ]
+        );
     }
 
     #[test]
@@ -526,8 +529,14 @@ mod tests {
     fn test_compression_codec_from_u8() {
         assert_eq!(CompressionCodec::from_u8(0), Some(CompressionCodec::Raw));
         assert_eq!(CompressionCodec::from_u8(1), Some(CompressionCodec::Delta));
-        assert_eq!(CompressionCodec::from_u8(2), Some(CompressionCodec::Dictionary));
-        assert_eq!(CompressionCodec::from_u8(3), Some(CompressionCodec::RunLength));
+        assert_eq!(
+            CompressionCodec::from_u8(2),
+            Some(CompressionCodec::Dictionary)
+        );
+        assert_eq!(
+            CompressionCodec::from_u8(3),
+            Some(CompressionCodec::RunLength)
+        );
         assert_eq!(CompressionCodec::from_u8(99), None);
     }
 

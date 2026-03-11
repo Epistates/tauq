@@ -65,9 +65,7 @@ fn decode_varint_slow(bytes: &[u8]) -> Result<(u64, usize), TauqError> {
 
         shift += 7;
         if shift >= 64 {
-            return Err(TauqError::Interpret(InterpretError::new(
-                "Varint overflow",
-            )));
+            return Err(TauqError::Interpret(InterpretError::new("Varint overflow")));
         }
     }
 
@@ -95,6 +93,7 @@ pub fn fast_decode_signed_varint(bytes: &[u8]) -> Result<(i64, usize), TauqError
 /// Caller must ensure bytes.len() >= 10 (max varint size) OR
 /// that the varint is complete within the slice.
 #[inline(always)]
+#[allow(dead_code)]
 pub unsafe fn fast_decode_varint_unchecked(bytes: &[u8]) -> (u64, usize) {
     // SAFETY: Caller guarantees bytes has sufficient length
     let b0 = unsafe { *bytes.get_unchecked(0) };
@@ -126,6 +125,12 @@ pub unsafe fn fast_decode_varint_unchecked(bytes: &[u8]) -> (u64, usize) {
 /// Returns the decoded values and bytes consumed.
 #[inline]
 pub fn batch_decode_u32(bytes: &[u8], count: usize) -> Result<(Vec<u32>, usize), TauqError> {
+    if count > MAX_BATCH_COUNT {
+        return Err(TauqError::Interpret(InterpretError::new(format!(
+            "Batch count {} exceeds maximum {}",
+            count, MAX_BATCH_COUNT
+        ))));
+    }
     let mut result = Vec::with_capacity(count);
     let mut pos = 0;
 
@@ -147,6 +152,12 @@ pub fn batch_decode_u32(bytes: &[u8], count: usize) -> Result<(Vec<u32>, usize),
 /// Batch decode u64 varints from a buffer
 #[inline]
 pub fn batch_decode_u64(bytes: &[u8], count: usize) -> Result<(Vec<u64>, usize), TauqError> {
+    if count > MAX_BATCH_COUNT {
+        return Err(TauqError::Interpret(InterpretError::new(format!(
+            "Batch count {} exceeds maximum {}",
+            count, MAX_BATCH_COUNT
+        ))));
+    }
     let mut result = Vec::with_capacity(count);
     let mut pos = 0;
 
@@ -168,6 +179,12 @@ pub fn batch_decode_u64(bytes: &[u8], count: usize) -> Result<(Vec<u64>, usize),
 /// Batch decode i32 varints (zigzag encoded)
 #[inline]
 pub fn batch_decode_i32(bytes: &[u8], count: usize) -> Result<(Vec<i32>, usize), TauqError> {
+    if count > MAX_BATCH_COUNT {
+        return Err(TauqError::Interpret(InterpretError::new(format!(
+            "Batch count {} exceeds maximum {}",
+            count, MAX_BATCH_COUNT
+        ))));
+    }
     let mut result = Vec::with_capacity(count);
     let mut pos = 0;
 
@@ -189,6 +206,12 @@ pub fn batch_decode_i32(bytes: &[u8], count: usize) -> Result<(Vec<i32>, usize),
 /// Batch decode i64 varints (zigzag encoded)
 #[inline]
 pub fn batch_decode_i64(bytes: &[u8], count: usize) -> Result<(Vec<i64>, usize), TauqError> {
+    if count > MAX_BATCH_COUNT {
+        return Err(TauqError::Interpret(InterpretError::new(format!(
+            "Batch count {} exceeds maximum {}",
+            count, MAX_BATCH_COUNT
+        ))));
+    }
     let mut result = Vec::with_capacity(count);
     let mut pos = 0;
 
@@ -210,6 +233,12 @@ pub fn batch_decode_i64(bytes: &[u8], count: usize) -> Result<(Vec<i64>, usize),
 /// Batch decode f32 values (fixed 4 bytes each)
 #[inline]
 pub fn batch_decode_f32(bytes: &[u8], count: usize) -> Result<Vec<f32>, TauqError> {
+    if count > MAX_BATCH_COUNT {
+        return Err(TauqError::Interpret(InterpretError::new(format!(
+            "Batch count {} exceeds maximum {}",
+            count, MAX_BATCH_COUNT
+        ))));
+    }
     let required = count * 4;
     if bytes.len() < required {
         return Err(TauqError::Interpret(InterpretError::new(
@@ -237,6 +266,12 @@ pub fn batch_decode_f32(bytes: &[u8], count: usize) -> Result<Vec<f32>, TauqErro
 /// Batch decode f64 values (fixed 8 bytes each)
 #[inline]
 pub fn batch_decode_f64(bytes: &[u8], count: usize) -> Result<Vec<f64>, TauqError> {
+    if count > MAX_BATCH_COUNT {
+        return Err(TauqError::Interpret(InterpretError::new(format!(
+            "Batch count {} exceeds maximum {}",
+            count, MAX_BATCH_COUNT
+        ))));
+    }
     let required = count * 8;
     if bytes.len() < required {
         return Err(TauqError::Interpret(InterpretError::new(
@@ -267,6 +302,12 @@ pub fn batch_decode_f64(bytes: &[u8], count: usize) -> Result<Vec<f64>, TauqErro
 /// Batch decode bool values (1 byte each)
 #[inline]
 pub fn batch_decode_bool(bytes: &[u8], count: usize) -> Result<Vec<bool>, TauqError> {
+    if count > MAX_BATCH_COUNT {
+        return Err(TauqError::Interpret(InterpretError::new(format!(
+            "Batch count {} exceeds maximum {}",
+            count, MAX_BATCH_COUNT
+        ))));
+    }
     if bytes.len() < count {
         return Err(TauqError::Interpret(InterpretError::new(
             "Buffer too small for bool batch decode",
@@ -288,11 +329,24 @@ pub struct FastBorrowedDictionary<'a> {
     strings: Vec<&'a str>,
 }
 
+/// Maximum dictionary entries to prevent allocation amplification attacks
+const MAX_DICT_ENTRIES: usize = 1_000_000;
+
+/// Maximum batch decode count to prevent allocation amplification
+const MAX_BATCH_COUNT: usize = 10_000_000;
+
 impl<'a> FastBorrowedDictionary<'a> {
     /// Decode dictionary from bytes, pre-resolving all string offsets
     pub fn decode(bytes: &'a [u8]) -> Result<(Self, usize), TauqError> {
         let (count, mut pos) = fast_decode_varint(bytes)?;
         let count = count as usize;
+
+        if count > MAX_DICT_ENTRIES {
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Dictionary count {} exceeds maximum {}",
+                count, MAX_DICT_ENTRIES
+            ))));
+        }
 
         let mut strings = Vec::with_capacity(count);
 
@@ -354,6 +408,12 @@ pub fn batch_decode_strings<'a>(
     count: usize,
     dict: &FastBorrowedDictionary<'a>,
 ) -> Result<(Vec<&'a str>, usize), TauqError> {
+    if count > MAX_BATCH_COUNT {
+        return Err(TauqError::Interpret(InterpretError::new(format!(
+            "Batch count {} exceeds maximum {}",
+            count, MAX_BATCH_COUNT
+        ))));
+    }
     let mut result = Vec::with_capacity(count);
     let mut pos = 0;
 
@@ -383,7 +443,10 @@ pub fn batch_decode_strings<'a>(
 /// when the schema is known at compile time.
 pub trait FastDecode: Sized {
     /// Decode a single value from bytes
-    fn fast_decode_from(bytes: &[u8], dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError>;
+    fn fast_decode_from(
+        bytes: &[u8],
+        dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError>;
 
     /// Decode a slice of values (batch optimized)
     fn fast_decode_slice(bytes: &[u8]) -> Result<Vec<Self>, TauqError> {
@@ -419,6 +482,13 @@ pub trait FastDecode: Sized {
         pos += len;
         let count = count as usize;
 
+        if count > MAX_BATCH_COUNT {
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Item count {} exceeds maximum {}",
+                count, MAX_BATCH_COUNT
+            ))));
+        }
+
         // Decode items
         let mut result = Vec::with_capacity(count);
         for _ in 0..count {
@@ -437,7 +507,10 @@ pub trait FastDecode: Sized {
 
 impl FastDecode for u32 {
     #[inline(always)]
-    fn fast_decode_from(bytes: &[u8], _dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    fn fast_decode_from(
+        bytes: &[u8],
+        _dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         let (value, len) = fast_decode_varint(bytes)?;
         Ok((value as u32, len))
     }
@@ -445,14 +518,20 @@ impl FastDecode for u32 {
 
 impl FastDecode for u64 {
     #[inline(always)]
-    fn fast_decode_from(bytes: &[u8], _dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    fn fast_decode_from(
+        bytes: &[u8],
+        _dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         fast_decode_varint(bytes)
     }
 }
 
 impl FastDecode for i32 {
     #[inline(always)]
-    fn fast_decode_from(bytes: &[u8], _dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    fn fast_decode_from(
+        bytes: &[u8],
+        _dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         let (value, len) = fast_decode_signed_varint(bytes)?;
         Ok((value as i32, len))
     }
@@ -460,14 +539,20 @@ impl FastDecode for i32 {
 
 impl FastDecode for i64 {
     #[inline(always)]
-    fn fast_decode_from(bytes: &[u8], _dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    fn fast_decode_from(
+        bytes: &[u8],
+        _dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         fast_decode_signed_varint(bytes)
     }
 }
 
 impl FastDecode for f32 {
     #[inline(always)]
-    fn fast_decode_from(bytes: &[u8], _dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    fn fast_decode_from(
+        bytes: &[u8],
+        _dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         if bytes.len() < 4 {
             return Err(TauqError::Interpret(InterpretError::new(
                 "Buffer too small for f32",
@@ -480,15 +565,17 @@ impl FastDecode for f32 {
 
 impl FastDecode for f64 {
     #[inline(always)]
-    fn fast_decode_from(bytes: &[u8], _dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    fn fast_decode_from(
+        bytes: &[u8],
+        _dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         if bytes.len() < 8 {
             return Err(TauqError::Interpret(InterpretError::new(
                 "Buffer too small for f64",
             )));
         }
         let value = f64::from_le_bytes([
-            bytes[0], bytes[1], bytes[2], bytes[3],
-            bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
         ]);
         Ok((value, 8))
     }
@@ -496,7 +583,10 @@ impl FastDecode for f64 {
 
 impl FastDecode for bool {
     #[inline(always)]
-    fn fast_decode_from(bytes: &[u8], _dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    fn fast_decode_from(
+        bytes: &[u8],
+        _dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         if bytes.is_empty() {
             return Err(TauqError::Interpret(InterpretError::new(
                 "Buffer too small for bool",
@@ -508,7 +598,10 @@ impl FastDecode for bool {
 
 impl FastDecode for String {
     #[inline(always)]
-    fn fast_decode_from(bytes: &[u8], dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    fn fast_decode_from(
+        bytes: &[u8],
+        dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         let (idx, len) = fast_decode_varint(bytes)?;
         let s = dict.get(idx as u32).ok_or_else(|| {
             TauqError::Interpret(InterpretError::new(format!(

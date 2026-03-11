@@ -7,9 +7,9 @@
 //!
 //! Statistics are stored in file footer for random access.
 
-use super::varint::{encode_varint, decode_varint};
-use crate::error::{TauqError, InterpretError};
-use serde_json::{json, Value};
+use super::varint::{decode_varint, encode_varint};
+use crate::error::{InterpretError, TauqError};
+use serde_json::{Value, json};
 
 /// Statistics for a single column
 #[derive(Debug, Clone)]
@@ -241,7 +241,9 @@ fn decode_json_value(bytes: &[u8]) -> Result<(Value, usize), TauqError> {
         0 => Ok((Value::Null, 1)),
         1 => {
             if bytes.len() < 2 {
-                return Err(TauqError::Interpret(InterpretError::new("Invalid bool value")));
+                return Err(TauqError::Interpret(InterpretError::new(
+                    "Invalid bool value",
+                )));
             }
             let b = bytes[1] != 0;
             Ok((Value::Bool(b), 2))
@@ -262,7 +264,9 @@ fn decode_json_value(bytes: &[u8]) -> Result<(Value, usize), TauqError> {
                 let f = f64::from_le_bytes(bytes_arr);
                 Ok((json!(f), offset + 8))
             } else {
-                Err(TauqError::Interpret(InterpretError::new("Invalid number value")))
+                Err(TauqError::Interpret(InterpretError::new(
+                    "Invalid number value",
+                )))
             }
         }
         3 => {
@@ -271,15 +275,18 @@ fn decode_json_value(bytes: &[u8]) -> Result<(Value, usize), TauqError> {
             offset += size;
             let len = len as usize;
             if bytes.len() < offset + len {
-                return Err(TauqError::Interpret(InterpretError::new("Invalid string value")));
+                return Err(TauqError::Interpret(InterpretError::new(
+                    "Invalid string value",
+                )));
             }
             let s = String::from_utf8(bytes[offset..offset + len].to_vec())
                 .map_err(|_| TauqError::Interpret(InterpretError::new("Invalid UTF-8 string")))?;
             Ok((Value::String(s), offset + len))
         }
-        _ => Err(TauqError::Interpret(InterpretError::new(
-            format!("Unknown JSON value type tag: {}", tag),
-        ))),
+        _ => Err(TauqError::Interpret(InterpretError::new(format!(
+            "Unknown JSON value type tag: {}",
+            tag
+        )))),
     }
 }
 
@@ -365,14 +372,16 @@ mod tests {
 
         // Compare numeric values (encoding converts to f64, so compare semantically)
         if let (Some(Value::Number(min)), Some(Value::Number(orig_min))) =
-            (decoded.min_value.as_ref(), stats.min_value.as_ref()) {
+            (decoded.min_value.as_ref(), stats.min_value.as_ref())
+        {
             assert_eq!(min.as_f64(), orig_min.as_f64());
         } else {
             panic!("min_value mismatch");
         }
 
         if let (Some(Value::Number(max)), Some(Value::Number(orig_max))) =
-            (decoded.max_value.as_ref(), stats.max_value.as_ref()) {
+            (decoded.max_value.as_ref(), stats.max_value.as_ref())
+        {
             assert_eq!(max.as_f64(), orig_max.as_f64());
         } else {
             panic!("max_value mismatch");
