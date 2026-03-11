@@ -15,16 +15,12 @@ const MAX_INPUT_SIZE: usize = 100 * 1024 * 1024;
 /// Commands outside this list will be rejected even in unsafe mode.
 const ALLOWED_COMMANDS: &[&str] = &[
     // Shells
-    "sh", "bash", "zsh", "dash",
-    // Interpreters
-    "python3", "python", "node", "ruby", "perl",
-    // Data processing
-    "jq", "yq",
-    // Basic utilities
+    "sh", "bash", "zsh", "dash", // Interpreters
+    "python3", "python", "node", "ruby", "perl", // Data processing
+    "jq", "yq", // Basic utilities
     "echo", "cat", "head", "tail", "sort", "uniq", "grep", "awk", "sed",
     // Network tools
-    "curl", "wget",
-    // Other common tools
+    "curl", "wget", // Other common tools
     "true", "false", "test", "expr",
 ];
 
@@ -86,11 +82,12 @@ fn secure_read_file(
     };
 
     // Open file first - this pins the inode and prevents TOCTOU
-    let mut file = File::open(&resolved)
-        .map_err(|e| format!("Cannot open file '{}': {}", path_str, e))?;
+    let mut file =
+        File::open(&resolved).map_err(|e| format!("Cannot open file '{}': {}", path_str, e))?;
 
     // Get metadata from the open file descriptor (not the path)
-    let metadata = file.metadata()
+    let metadata = file
+        .metadata()
         .map_err(|e| format!("Cannot read file metadata '{}': {}", path_str, e))?;
 
     // Note: After File::open(), we have the actual file, not the symlink.
@@ -106,7 +103,9 @@ fn secure_read_file(
     if metadata.len() > MAX_INPUT_SIZE as u64 {
         return Err(format!(
             "File '{}' too large: {} bytes (max {} bytes)",
-            path_str, metadata.len(), MAX_INPUT_SIZE
+            path_str,
+            metadata.len(),
+            MAX_INPUT_SIZE
         ));
     }
 
@@ -210,7 +209,8 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!import directive is disabled in safe mode".to_string());
             }
-            let path_str = trimmed.strip_prefix("!import ")
+            let path_str = trimmed
+                .strip_prefix("!import ")
                 .ok_or_else(|| "Invalid !import directive".to_string())?
                 .trim();
             let clean_path = path_str.trim_matches('"');
@@ -243,7 +243,8 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!emit directive is disabled in safe mode".to_string());
             }
-            let cmd_str = trimmed.strip_prefix("!emit ")
+            let cmd_str = trimmed
+                .strip_prefix("!emit ")
                 .ok_or_else(|| "Invalid !emit directive".to_string())?;
             let result = run_command(cmd_str, None, vars)?;
             validate_tauq_output(&result, "!emit", cmd_str)?;
@@ -253,7 +254,8 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!env directive is disabled in safe mode".to_string());
             }
-            let var_name = trimmed.strip_prefix("!env ")
+            let var_name = trimmed
+                .strip_prefix("!env ")
                 .ok_or_else(|| "Invalid !env directive".to_string())?
                 .trim();
             if let Ok(val) = std::env::var(var_name) {
@@ -266,7 +268,8 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!read directive is disabled in safe mode".to_string());
             }
-            let path_str = trimmed.strip_prefix("!read ")
+            let path_str = trimmed
+                .strip_prefix("!read ")
                 .ok_or_else(|| "Invalid !read directive".to_string())?
                 .trim();
             let clean_path = path_str.trim_matches('"');
@@ -280,7 +283,8 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!json directive is disabled in safe mode".to_string());
             }
-            let path_str = trimmed.strip_prefix("!json ")
+            let path_str = trimmed
+                .strip_prefix("!json ")
                 .ok_or_else(|| "Invalid !json directive".to_string())?
                 .trim();
             let clean_path = path_str.trim_matches('"');
@@ -299,7 +303,8 @@ fn process_internal(
                 return Err("!run directive is disabled in safe mode".to_string());
             }
             // Parse "!run cmd args... {"
-            let line_content = trimmed.strip_prefix("!run ")
+            let line_content = trimmed
+                .strip_prefix("!run ")
                 .ok_or_else(|| "Invalid !run directive".to_string())?
                 .trim();
             let cmd_part = if let Some(stripped) = line_content.strip_suffix(" {") {
@@ -365,7 +370,8 @@ fn process_internal(
             if config.safe_mode {
                 return Err("!pipe directive is disabled in safe mode".to_string());
             }
-            let cmd_str = trimmed.strip_prefix("!pipe ")
+            let cmd_str = trimmed
+                .strip_prefix("!pipe ")
                 .ok_or_else(|| "Invalid !pipe directive".to_string())?
                 .trim();
 
@@ -469,7 +475,9 @@ fn validate_tauq_output(output: &str, directive: &str, source_hint: &str) -> Res
             // Check for common JSON mistakes
             let hint = if trimmed.contains("\":") || trimmed.contains("\": ") {
                 "\n  Hint: Output looks like JSON. Use Tauq syntax (spaces, no colons/commas) or use !json for JSON files."
-            } else if trimmed.contains(',') && (trimmed.starts_with('{') || trimmed.starts_with('[')) {
+            } else if trimmed.contains(',')
+                && (trimmed.starts_with('{') || trimmed.starts_with('['))
+            {
                 "\n  Hint: Output contains commas. Tauq uses spaces as delimiters, not commas."
             } else {
                 ""
@@ -503,8 +511,13 @@ fn validate_command(program: &str) -> Result<(), String> {
 /// Filter environment variables to remove dangerous ones
 fn filter_env_vars(vars: &HashMap<String, String>) -> HashMap<String, String> {
     const DANGEROUS_VARS: &[&str] = &[
-        "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
-        "DYLD_LIBRARY_PATH", "PATH", "SHELL", "HOME",
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+        "DYLD_LIBRARY_PATH",
+        "PATH",
+        "SHELL",
+        "HOME",
     ];
 
     vars.iter()
@@ -534,6 +547,7 @@ fn run_command(
 
     let mut child = Command::new(program)
         .args(args)
+        .env_clear()
         .envs(&safe_vars)
         .stdin(if input.is_some() {
             Stdio::piped()
@@ -590,6 +604,7 @@ fn run_code_block(
     let mut child = Command::new(program)
         .args(args)
         .arg(path)
+        .env_clear()
         .envs(&safe_vars)
         .stdin(if input.is_some() {
             Stdio::piped()

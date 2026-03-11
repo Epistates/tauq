@@ -237,7 +237,10 @@ impl Formatter {
     }
 
     /// Deprecated: Use Formatter::new().with_comma_delimiter().minified()
-    #[deprecated(since = "0.2.0", note = "Use Formatter::new().with_comma_delimiter().minified()")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use Formatter::new().with_comma_delimiter().minified()"
+    )]
     pub fn ultra_compact() -> Self {
         Self::new().with_comma_delimiter().minified()
     }
@@ -288,7 +291,12 @@ impl Formatter {
     }
 
     /// Collect schemas from nested arrays (first pass)
-    fn collect_schemas(&self, value: &Value, registry: &mut SchemaRegistry, _context: Option<&str>) {
+    fn collect_schemas(
+        &self,
+        value: &Value,
+        registry: &mut SchemaRegistry,
+        _context: Option<&str>,
+    ) {
         match value {
             Value::Object(obj) => {
                 for (key, val) in obj {
@@ -354,7 +362,9 @@ impl Formatter {
         let formatted_value = match value {
             // Recursively apply schema logic to nested objects
             Value::Object(obj) => self.format_object_with_schemas(obj, registry, depth),
-            Value::Array(arr) => self.format_array_with_schemas(arr, registry, depth + 1, Some(key)),
+            Value::Array(arr) => {
+                self.format_array_with_schemas(arr, registry, depth + 1, Some(key))
+            }
             other => self.format_value_standard(other, depth),
         };
 
@@ -410,7 +420,12 @@ impl Formatter {
 
             if let Some(schema_info) = registry.schemas.get(&sig) {
                 // Use !use inside array with schema rows
-                return self.format_schema_array(arr, &schema_info.name, &schema_info.fields, depth);
+                return self.format_schema_array(
+                    arr,
+                    &schema_info.name,
+                    &schema_info.fields,
+                    depth,
+                );
             }
         }
 
@@ -521,12 +536,20 @@ impl Formatter {
                 .map(|r| format!("{}{}", row_indent, r))
                 .collect::<Vec<_>>()
                 .join("\n");
-            format!("[\n{}!use {}\n{}\n{}]", row_indent, schema_name, rows_str, close_indent)
+            format!(
+                "[\n{}!use {}\n{}\n{}]",
+                row_indent, schema_name, rows_str, close_indent
+            )
         }
     }
 
     /// Format top-level array of uniform objects using !def (implicit !use)
-    fn format_top_level_table(&self, arr: &[Value], fields: &[String], schema_name: &str) -> String {
+    fn format_top_level_table(
+        &self,
+        arr: &[Value],
+        fields: &[String],
+        schema_name: &str,
+    ) -> String {
         let sep = if self.minify { ";" } else { "\n" };
         let value_sep = self.value_sep();
         let field_sep = value_sep; // Use same separator for schema fields
@@ -564,7 +587,8 @@ impl Formatter {
                 }
             }
             Value::Array(arr) => {
-                let elements: Vec<String> = arr.iter().map(|v| self.format_value_for_row(v)).collect();
+                let elements: Vec<String> =
+                    arr.iter().map(|v| self.format_value_for_row(v)).collect();
                 format!("[{}]", elements.join(" "))
             }
             Value::Object(obj) => {
@@ -748,7 +772,8 @@ impl Formatter {
         }
 
         // All chars must be alphanumeric, underscore, or hyphen
-        s.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+        s.chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
     }
 
     /// Check if string can be a bareword value (more permissive than identifiers)
@@ -827,7 +852,10 @@ pub fn json_to_tauq_no_schemas(value: &Value) -> String {
 }
 
 /// Deprecated: Use json_to_tauq_no_schemas
-#[deprecated(since = "0.2.0", note = "Use json_to_tauq_no_schemas - 'simple' terminology removed")]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use json_to_tauq_no_schemas - 'simple' terminology removed"
+)]
 pub fn json_to_tauq_simple(value: &Value) -> String {
     json_to_tauq_no_schemas(value)
 }
@@ -868,7 +896,8 @@ mod tests {
 
         // Should have id, name, email in that order (not alphabetized)
         assert!(
-            result.contains("!def Record id name email") || result.contains("!def Record id,name,email"),
+            result.contains("!def Record id name email")
+                || result.contains("!def Record id,name,email"),
             "Expected field order id,name,email but got: {}",
             result
         );
@@ -883,7 +912,8 @@ mod tests {
         // /api/v1 should not need quoting with improved bareword rules
         assert!(
             result.contains("path /api/v1") || result.contains("path \"/api/v1\""),
-            "Path handling: {}", result
+            "Path handling: {}",
+            result
         );
     }
 
@@ -897,8 +927,16 @@ mod tests {
         let result = json_to_tauq(&value);
 
         // Should use !def with implicit !use (no explicit !use needed)
-        assert!(result.contains("!def Record"), "Expected !def, got: {}", result);
-        assert!(!result.contains("!use"), "Should not have explicit !use: {}", result);
+        assert!(
+            result.contains("!def Record"),
+            "Expected !def, got: {}",
+            result
+        );
+        assert!(
+            !result.contains("!use"),
+            "Should not have explicit !use: {}",
+            result
+        );
         assert!(result.contains("1 Alice"));
         assert!(result.contains("2 Bob"));
     }
@@ -917,7 +955,11 @@ mod tests {
             "Should have comma-separated fields: {}",
             result
         );
-        assert!(result.contains("1,Alice"), "Should have comma-separated values: {}", result);
+        assert!(
+            result.contains("1,Alice"),
+            "Should have comma-separated values: {}",
+            result
+        );
     }
 
     #[test]
@@ -956,13 +998,29 @@ mod tests {
         let result = json_to_tauq(&value);
 
         // Should have !def with context-aware name (users -> User)
-        assert!(result.contains("!def User"), "Should have !def User: {}", result);
+        assert!(
+            result.contains("!def User"),
+            "Should have !def User: {}",
+            result
+        );
         // Should have --- separator
-        assert!(result.contains("---"), "Should have --- separator: {}", result);
+        assert!(
+            result.contains("---"),
+            "Should have --- separator: {}",
+            result
+        );
         // Should have !use inside array
-        assert!(result.contains("!use User"), "Should have !use User: {}", result);
+        assert!(
+            result.contains("!use User"),
+            "Should have !use User: {}",
+            result
+        );
         // Should have schema rows
-        assert!(result.contains("1 Alice admin"), "Should have row data: {}", result);
+        assert!(
+            result.contains("1 Alice admin"),
+            "Should have row data: {}",
+            result
+        );
     }
 
     #[test]
@@ -975,7 +1033,10 @@ mod tests {
         let top_result = json_to_tauq(&top_level);
         assert!(top_result.contains("!def"), "Top-level should use !def");
         // Top-level uses implicit !use (no explicit !use needed)
-        assert!(!top_result.contains("!use"), "Top-level should use implicit !use");
+        assert!(
+            !top_result.contains("!use"),
+            "Top-level should use implicit !use"
+        );
 
         // Nested array: uses !def/---/!use pattern
         let nested = json!({
@@ -985,9 +1046,19 @@ mod tests {
             ]
         });
         let nested_result = json_to_tauq(&nested);
-        assert!(nested_result.contains("!def"), "Nested should use !def: {}", nested_result);
-        assert!(nested_result.contains("---"), "Nested should have --- separator");
-        assert!(nested_result.contains("!use"), "Nested should use explicit !use");
+        assert!(
+            nested_result.contains("!def"),
+            "Nested should use !def: {}",
+            nested_result
+        );
+        assert!(
+            nested_result.contains("---"),
+            "Nested should have --- separator"
+        );
+        assert!(
+            nested_result.contains("!use"),
+            "Nested should use explicit !use"
+        );
     }
 
     #[test]
@@ -1000,7 +1071,11 @@ mod tests {
         let result = json_to_tauq(&value);
 
         // Should format as individual objects, not use schema
-        assert!(!result.contains("!def"), "Heterogeneous array should not use schema: {}", result);
+        assert!(
+            !result.contains("!def"),
+            "Heterogeneous array should not use schema: {}",
+            result
+        );
         assert!(result.contains("{"), "Should have object notation");
         assert!(result.contains("id 1"), "Should have id field");
         assert!(result.contains("name Alice"), "Should have name field");
@@ -1019,14 +1094,18 @@ mod tests {
 
         // Parse it back
         let mut parser = crate::tauq::Parser::new(&tauq_str);
-        let parsed = parser.parse().unwrap_or_else(|_| panic!("Failed to parse: {}", tauq_str));
+        let parsed = parser
+            .parse()
+            .unwrap_or_else(|_| panic!("Failed to parse: {}", tauq_str));
 
         // Parser returns object (possibly wrapped in array for consistency)
         let obj = if let Some(arr) = parsed.as_array() {
             // If array, get first item
             arr[0].as_object().expect("First item should be object")
         } else {
-            parsed.as_object().expect("Result should be object or array")
+            parsed
+                .as_object()
+                .expect("Result should be object or array")
         };
 
         // Verify users array

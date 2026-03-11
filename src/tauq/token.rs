@@ -18,7 +18,7 @@ pub enum Token {
     /// Null literal
     Null,
     /// Triple dash separator `---`
-    TripleDash, 
+    TripleDash,
     /// Colon separator `:`
     Colon,
     /// Semicolon separator `;`
@@ -33,8 +33,6 @@ pub enum Token {
     LBracket,
     /// Right bracket `]`
     RBracket,
-    /// End of file
-    Eof,
 }
 
 /// Source location for error reporting

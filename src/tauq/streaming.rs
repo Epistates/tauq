@@ -88,6 +88,18 @@ impl<'a> StreamingParser<'a> {
                         return Some(Err(e));
                     }
                 }
+                Token::TripleDash => {
+                    // Flush pending before clearing schema
+                    if !self.pending_kv.is_empty() {
+                        let result = Value::Object(std::mem::take(&mut self.pending_kv));
+                        // Clear active schema scope (matching batch Parser behavior)
+                        self.active_shape = None;
+                        return Some(Ok(result));
+                    }
+                    // Clear active schema scope
+                    self.active_shape = None;
+                    self.advance();
+                }
                 Token::Newline | Token::Semi => {
                     self.advance();
                 }

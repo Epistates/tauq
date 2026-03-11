@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 /// Field definition in a schema
@@ -28,6 +29,9 @@ pub enum TypeDef {
     List(String),
 }
 
+/// Maximum total number of imports allowed to prevent DoS
+const MAX_TOTAL_IMPORTS: usize = 100;
+
 /// Parser context holding schema definitions
 #[derive(Clone)]
 pub struct Context {
@@ -35,6 +39,10 @@ pub struct Context {
     pub shapes: Rc<RefCell<HashMap<String, Vec<FieldDef>>>>,
     /// Base directory for resolving relative imports
     pub base_dir: Option<std::path::PathBuf>,
+    /// Set of already-imported file paths (prevents circular/diamond imports)
+    pub imported_files: Rc<RefCell<HashSet<std::path::PathBuf>>>,
+    /// Total import count (prevents DoS via many flat imports)
+    pub import_count: Rc<RefCell<usize>>,
 }
 
 impl Context {
@@ -43,6 +51,8 @@ impl Context {
         Self {
             shapes: Rc::new(RefCell::new(HashMap::new())),
             base_dir: None,
+            imported_files: Rc::new(RefCell::new(HashSet::new())),
+            import_count: Rc::new(RefCell::new(0)),
         }
     }
 
@@ -51,6 +61,8 @@ impl Context {
         Self {
             shapes: Rc::new(RefCell::new(HashMap::new())),
             base_dir: Some(base_dir),
+            imported_files: Rc::new(RefCell::new(HashSet::new())),
+            import_count: Rc::new(RefCell::new(0)),
         }
     }
 }
@@ -198,6 +210,15 @@ impl<'a> Parser<'a> {
 
         if !pending_map.is_empty() {
             result.push(Value::Object(pending_map));
+        }
+
+        // Surface any lexer errors (e.g. unterminated string literal) that were
+        // deferred during tokenisation.
+        if let Some(lex_err) = &self.lexer.lex_error {
+            return Err(ParseError::new(
+                lex_err.message.clone(),
+                Span::new(lex_err.span.line, lex_err.span.column),
+            ));
         }
 
         if result.len() == 1 {
@@ -372,6 +393,18 @@ impl<'a> Parser<'a> {
     }
 
     fn handle_import(&mut self, path: &str) -> Result<(), ParseError> {
+        // Check total import count to prevent DoS via many flat imports
+        {
+            let mut count = self.context.import_count.borrow_mut();
+            if *count >= MAX_TOTAL_IMPORTS {
+                return Err(self.make_error(format!(
+                    "Maximum total imports ({}) exceeded",
+                    MAX_TOTAL_IMPORTS
+                )));
+            }
+            *count += 1;
+        }
+
         // Resolve path relative to base_dir if set
         let resolved_path = if let Some(base) = &self.context.base_dir {
             base.join(path)
@@ -396,11 +429,21 @@ impl<'a> Parser<'a> {
             }
         }
 
+        // Check for circular/diamond imports using visited set
+        {
+            let mut imported = self.context.imported_files.borrow_mut();
+            if imported.contains(&canonical) {
+                // Already imported — skip silently (prevents diamond import redundancy)
+                return Ok(());
+            }
+            imported.insert(canonical.clone());
+        }
+
         let content = std::fs::read_to_string(&canonical).map_err(|e| {
             self.make_error(format!("Failed to read imported file '{}': {}", path, e))
         })?;
 
-        // Parse imported file with same context
+        // Parse imported file with same context (shapes, imported_files, import_count are shared via Rc)
         let mut import_context = self.context.clone();
         import_context.base_dir = canonical.parent().map(|p| p.to_path_buf());
 
@@ -408,9 +451,6 @@ impl<'a> Parser<'a> {
         parser
             .parse()
             .map_err(|e| self.make_error(format!("Error in imported file '{}': {}", path, e)))?;
-
-        // Copy shapes back to our context
-        // (shapes are shared via Rc<RefCell<...>> so they're already updated)
 
         Ok(())
     }
