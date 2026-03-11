@@ -24,5 +24,5 @@
 mod arrow_convert;
 mod writer;
 
-pub use arrow_convert::{arrow_schema_to_tbf, ArrowToTbf};
+pub use arrow_convert::{ArrowToTbf, arrow_schema_to_tbf};
 pub use writer::{TbfFileWriter, TbfFileWriterBuilder};

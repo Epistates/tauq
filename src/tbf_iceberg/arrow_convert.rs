@@ -10,8 +10,8 @@ use arrow_schema::{DataType, Schema as ArrowSchema};
 use iceberg::spec::{PrimitiveType, Schema as IcebergSchema, Type};
 
 use crate::tbf::{
-    AdaptiveIntEncoder, AdaptiveStringEncoder, FieldEncoding, TableSchema, TableSchemaBuilder,
-    UltraBuffer, encode_varint_fast, SCHEMA_MAGIC,
+    AdaptiveIntEncoder, AdaptiveStringEncoder, FieldEncoding, SCHEMA_MAGIC, TableSchema,
+    TableSchemaBuilder, UltraBuffer, encode_varint_fast,
 };
 
 /// Convert Arrow schema to TBF TableSchema
@@ -72,8 +72,10 @@ fn iceberg_type_to_encoding(ty: &Type) -> FieldEncoding {
             PrimitiveType::Binary | PrimitiveType::Fixed(_) => FieldEncoding::Inline,
             PrimitiveType::Date => FieldEncoding::I32,
             PrimitiveType::Time => FieldEncoding::I64,
-            PrimitiveType::Timestamp | PrimitiveType::Timestamptz |
-            PrimitiveType::TimestampNs | PrimitiveType::TimestamptzNs => FieldEncoding::I64,
+            PrimitiveType::Timestamp
+            | PrimitiveType::Timestamptz
+            | PrimitiveType::TimestampNs
+            | PrimitiveType::TimestamptzNs => FieldEncoding::I64,
             PrimitiveType::Decimal { .. } => FieldEncoding::VarInt,
             PrimitiveType::Uuid => FieldEncoding::Inline,
         },
@@ -144,10 +146,18 @@ impl ColumnEncoder {
     fn new(array: ArrayRef, encoding: FieldEncoding, capacity: usize) -> Self {
         match array.data_type() {
             DataType::Boolean => ColumnEncoder::Bool(Vec::with_capacity(capacity), array),
-            DataType::Int8 | DataType::Int16 | DataType::Int32 | DataType::Int64 |
-            DataType::UInt8 | DataType::UInt16 | DataType::UInt32 | DataType::UInt64 |
-            DataType::Date32 | DataType::Date64 | DataType::Time64(_) |
-            DataType::Timestamp(_, _) => {
+            DataType::Int8
+            | DataType::Int16
+            | DataType::Int32
+            | DataType::Int64
+            | DataType::UInt8
+            | DataType::UInt16
+            | DataType::UInt32
+            | DataType::UInt64
+            | DataType::Date32
+            | DataType::Date64
+            | DataType::Time64(_)
+            | DataType::Timestamp(_, _) => {
                 ColumnEncoder::Int(AdaptiveIntEncoder::new(encoding, capacity), array)
             }
             DataType::Float32 => ColumnEncoder::Float32(Vec::with_capacity(capacity), array),
@@ -155,9 +165,10 @@ impl ColumnEncoder {
             DataType::Utf8 | DataType::LargeUtf8 => {
                 ColumnEncoder::String(AdaptiveStringEncoder::new(encoding, capacity), array)
             }
-            _ => {
-                ColumnEncoder::String(AdaptiveStringEncoder::new(FieldEncoding::Inline, capacity), array)
-            }
+            _ => ColumnEncoder::String(
+                AdaptiveStringEncoder::new(FieldEncoding::Inline, capacity),
+                array,
+            ),
         }
     }
 

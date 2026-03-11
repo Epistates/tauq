@@ -12,7 +12,7 @@
 use arrow_array::RecordBatch;
 use iceberg::spec::Schema as IcebergSchema;
 
-use super::arrow_convert::{iceberg_schema_to_tbf, ArrowToTbf};
+use super::arrow_convert::{ArrowToTbf, iceberg_schema_to_tbf};
 use crate::tbf::TableSchema;
 
 /// TBF writer configuration
@@ -156,16 +156,20 @@ impl Default for TbfFileWriterBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use arrow_array::{Int32Array, StringArray};
     use arrow_schema::{DataType, Field, Schema as ArrowSchema};
     use iceberg::spec::{NestedField, PrimitiveType, Schema, Type};
+    use std::sync::Arc;
 
     #[test]
     fn test_writer_builder() {
         let iceberg_schema = Schema::builder()
             .with_fields(vec![
-                Arc::new(NestedField::required(1, "id", Type::Primitive(PrimitiveType::Int))),
+                Arc::new(NestedField::required(
+                    1,
+                    "id",
+                    Type::Primitive(PrimitiveType::Int),
+                )),
                 Arc::new(NestedField::required(
                     2,
                     "name",
@@ -192,7 +196,11 @@ mod tests {
 
         let iceberg_schema = Schema::builder()
             .with_fields(vec![
-                Arc::new(NestedField::required(1, "id", Type::Primitive(PrimitiveType::Int))),
+                Arc::new(NestedField::required(
+                    1,
+                    "id",
+                    Type::Primitive(PrimitiveType::Int),
+                )),
                 Arc::new(NestedField::required(
                     2,
                     "name",
@@ -209,11 +217,9 @@ mod tests {
         let id_array = Int32Array::from(vec![1, 2, 3]);
         let name_array = StringArray::from(vec!["Alice", "Bob", "Carol"]);
 
-        let batch = RecordBatch::try_new(
-            arrow_schema,
-            vec![Arc::new(id_array), Arc::new(name_array)],
-        )
-        .unwrap();
+        let batch =
+            RecordBatch::try_new(arrow_schema, vec![Arc::new(id_array), Arc::new(name_array)])
+                .unwrap();
 
         writer.write(&batch);
 
