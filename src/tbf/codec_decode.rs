@@ -6,10 +6,8 @@
 //! - Decoding values using appropriate codec decoders
 //! - Reconstructing original values
 
+use super::adaptive_encode::{CompressionCodec, DeltaEncoder, DictionaryEncoder, RLEEncoder};
 use super::codec_encode::CodecMetadata;
-use super::adaptive_encode::{
-    CompressionCodec, DeltaEncoder, DictionaryEncoder, RLEEncoder,
-};
 use crate::error::TauqError;
 use serde_json::Value;
 
@@ -75,9 +73,9 @@ impl CodecDecodingContext {
                         // In a full implementation, we would reconstruct based on initial_value
                         Ok(Value::Number(num.into()))
                     } else {
-                        Err(TauqError::Interpret(
-                            crate::error::InterpretError::new("Delta encoder not initialized"),
-                        ))
+                        Err(TauqError::Interpret(crate::error::InterpretError::new(
+                            "Delta encoder not initialized",
+                        )))
                     }
                 } else {
                     // Non-numeric fallback to raw
@@ -138,9 +136,11 @@ pub fn decode_codec_metadata(bytes: &[u8]) -> Result<(CompressionCodec, CodecMet
         1 => CompressionCodec::Delta,
         2 => CompressionCodec::Dictionary,
         3 => CompressionCodec::RunLength,
-        _ => return Err(TauqError::Interpret(
-            crate::error::InterpretError::new(format!("Unknown codec type: {}", codec_type)),
-        )),
+        _ => {
+            return Err(TauqError::Interpret(crate::error::InterpretError::new(
+                format!("Unknown codec type: {}", codec_type),
+            )));
+        }
     };
 
     let metadata = match codec {
@@ -148,7 +148,9 @@ pub fn decode_codec_metadata(bytes: &[u8]) -> Result<(CompressionCodec, CodecMet
             if bytes.len() > 1 {
                 // Read initial value as signed varint
                 let (value, _) = super::varint::decode_signed_varint(&bytes[1..])?;
-                CodecMetadata::Delta { initial_value: value }
+                CodecMetadata::Delta {
+                    initial_value: value,
+                }
             } else {
                 CodecMetadata::Delta { initial_value: 0 }
             }
@@ -157,17 +159,15 @@ pub fn decode_codec_metadata(bytes: &[u8]) -> Result<(CompressionCodec, CodecMet
             if bytes.len() > 1 {
                 // Read dictionary size as varint
                 let (size, _) = super::varint::decode_varint(&bytes[1..])?;
-                CodecMetadata::Dictionary { dictionary_size: size as u32 }
+                CodecMetadata::Dictionary {
+                    dictionary_size: size as u32,
+                }
             } else {
                 CodecMetadata::Dictionary { dictionary_size: 0 }
             }
         }
-        CompressionCodec::RunLength => {
-            CodecMetadata::RLE
-        }
-        CompressionCodec::Raw => {
-            CodecMetadata::None
-        }
+        CompressionCodec::RunLength => CodecMetadata::RLE,
+        CompressionCodec::Raw => CodecMetadata::None,
     };
 
     Ok((codec, metadata))
@@ -202,7 +202,9 @@ mod tests {
     fn test_dictionary_decoder_initialization() {
         let mut ctx = CodecDecodingContext::from_metadata(
             CompressionCodec::Dictionary,
-            CodecMetadata::Dictionary { dictionary_size: 100 },
+            CodecMetadata::Dictionary {
+                dictionary_size: 100,
+            },
         );
         ctx.initialize_decoders();
         assert!(ctx.dict_encoder.is_some());
@@ -210,20 +212,16 @@ mod tests {
 
     #[test]
     fn test_rle_decoder_initialization() {
-        let mut ctx = CodecDecodingContext::from_metadata(
-            CompressionCodec::RunLength,
-            CodecMetadata::RLE,
-        );
+        let mut ctx =
+            CodecDecodingContext::from_metadata(CompressionCodec::RunLength, CodecMetadata::RLE);
         ctx.initialize_decoders();
         assert!(ctx.rle_encoder.is_some());
     }
 
     #[test]
     fn test_raw_codec_no_initialization() {
-        let mut ctx = CodecDecodingContext::from_metadata(
-            CompressionCodec::Raw,
-            CodecMetadata::None,
-        );
+        let mut ctx =
+            CodecDecodingContext::from_metadata(CompressionCodec::Raw, CodecMetadata::None);
         ctx.initialize_decoders();
         assert!(ctx.delta_encoder.is_none());
         assert!(ctx.dict_encoder.is_none());
@@ -232,10 +230,8 @@ mod tests {
 
     #[test]
     fn test_codec_active_check() {
-        let ctx_raw = CodecDecodingContext::from_metadata(
-            CompressionCodec::Raw,
-            CodecMetadata::None,
-        );
+        let ctx_raw =
+            CodecDecodingContext::from_metadata(CompressionCodec::Raw, CodecMetadata::None);
         assert!(!ctx_raw.is_active());
 
         let ctx_delta = CodecDecodingContext::from_metadata(
@@ -247,10 +243,8 @@ mod tests {
 
     #[test]
     fn test_decode_raw_value() {
-        let mut ctx = CodecDecodingContext::from_metadata(
-            CompressionCodec::Raw,
-            CodecMetadata::None,
-        );
+        let mut ctx =
+            CodecDecodingContext::from_metadata(CompressionCodec::Raw, CodecMetadata::None);
         ctx.initialize_decoders();
 
         let value = json!("test");

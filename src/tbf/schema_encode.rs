@@ -79,7 +79,6 @@ pub enum FieldEncoding {
     // =========================================================================
     // Fixed-width integer types (direct Rust type mapping)
     // =========================================================================
-
     /// Unsigned 8-bit integer (0..255)
     U8,
     /// Unsigned 16-bit integer (0..65535)
@@ -100,28 +99,26 @@ pub enum FieldEncoding {
     // =========================================================================
     // Fixed-width with offset (best compression + clean API)
     // =========================================================================
-
     /// Unsigned 8-bit with offset: value - offset stored as u8
     /// Example: age with offset 18 stores 18-273 as 0-255
-    U8Offset { 
+    U8Offset {
         /// Base value to subtract before encoding
-        offset: i64 
+        offset: i64,
     },
     /// Unsigned 16-bit with offset
-    U16Offset { 
+    U16Offset {
         /// Base value to subtract before encoding
-        offset: i64 
+        offset: i64,
     },
     /// Unsigned 32-bit with offset
-    U32Offset { 
+    U32Offset {
         /// Base value to subtract before encoding
-        offset: i64 
+        offset: i64,
     },
 
     // =========================================================================
     // Ranged/Compact encodings
     // =========================================================================
-
     /// Compact integer with optional range hints
     /// The encoder will use the smallest representation that fits
     /// If data exceeds hints, falls back gracefully to larger encoding
@@ -139,7 +136,6 @@ pub enum FieldEncoding {
     // =========================================================================
     // String encodings
     // =========================================================================
-
     /// Dictionary encoding for strings
     /// Best for low-cardinality fields (< 65536 unique values)
     /// Falls back to inline if cardinality exceeds threshold
@@ -152,7 +148,6 @@ pub enum FieldEncoding {
     // =========================================================================
     // Other types
     // =========================================================================
-
     /// Boolean field (bit-packed)
     Bool,
 
@@ -185,15 +180,23 @@ impl FieldEncoding {
         match self {
             FieldEncoding::U8 | FieldEncoding::I8 | FieldEncoding::U8Offset { .. } => Some(8),
             FieldEncoding::U16 | FieldEncoding::I16 | FieldEncoding::U16Offset { .. } => Some(16),
-            FieldEncoding::U32 | FieldEncoding::I32 | FieldEncoding::Float32 | FieldEncoding::U32Offset { .. } => Some(32),
+            FieldEncoding::U32
+            | FieldEncoding::I32
+            | FieldEncoding::Float32
+            | FieldEncoding::U32Offset { .. } => Some(32),
             FieldEncoding::U64 | FieldEncoding::I64 | FieldEncoding::Float64 => Some(64),
             FieldEncoding::Bool => Some(1),
             FieldEncoding::Compact { min_hint, max_hint } => {
                 let range = (*max_hint as u64).saturating_sub(*min_hint as u64);
-                Some(if range <= 0xFF { 8 }
-                    else if range <= 0xFFFF { 16 }
-                    else if range <= 0xFFFF_FFFF { 32 }
-                    else { 64 })
+                Some(if range <= 0xFF {
+                    8
+                } else if range <= 0xFFFF {
+                    16
+                } else if range <= 0xFFFF_FFFF {
+                    32
+                } else {
+                    64
+                })
             }
             _ => None,
         }
@@ -202,9 +205,14 @@ impl FieldEncoding {
     /// Check if this is a signed integer type
     #[inline]
     pub fn is_signed(&self) -> bool {
-        matches!(self, FieldEncoding::I8 | FieldEncoding::I16 |
-                       FieldEncoding::I32 | FieldEncoding::I64 |
-                       FieldEncoding::Compact { .. })
+        matches!(
+            self,
+            FieldEncoding::I8
+                | FieldEncoding::I16
+                | FieldEncoding::I32
+                | FieldEncoding::I64
+                | FieldEncoding::Compact { .. }
+        )
     }
 
     /// Get the offset for range-based encoding
@@ -256,7 +264,9 @@ pub struct TableSchema {
 impl TableSchema {
     /// Create an empty schema
     pub fn new() -> Self {
-        Self { columns: Vec::new() }
+        Self {
+            columns: Vec::new(),
+        }
     }
 
     /// Create a schema builder
@@ -281,7 +291,8 @@ impl TableSchema {
 
     /// Get encoding for column by name
     pub fn encoding_by_name(&self, name: &str) -> Option<FieldEncoding> {
-        self.columns.iter()
+        self.columns
+            .iter()
             .find(|c| c.name == name)
             .map(|c| c.encoding)
     }
@@ -296,7 +307,9 @@ pub struct TableSchemaBuilder {
 impl TableSchemaBuilder {
     /// Create a new builder
     pub fn new() -> Self {
-        Self { columns: Vec::new() }
+        Self {
+            columns: Vec::new(),
+        }
     }
 
     /// Add a column with encoding
@@ -429,7 +442,9 @@ impl TableSchemaBuilder {
 
     /// Build the schema
     pub fn build(self) -> TableSchema {
-        TableSchema { columns: self.columns }
+        TableSchema {
+            columns: self.columns,
+        }
     }
 }
 
@@ -500,20 +515,30 @@ impl AdaptiveIntEncoder {
             // Auto: sample actual range
             FieldEncoding::Auto => {
                 let range = (self.actual_max - self.actual_min) as u64;
-                let bits = if range <= 0xFF { 8 }
-                    else if range <= 0xFFFF { 16 }
-                    else if range <= 0xFFFF_FFFF { 32 }
-                    else { 64 };
+                let bits = if range <= 0xFF {
+                    8
+                } else if range <= 0xFFFF {
+                    16
+                } else if range <= 0xFFFF_FFFF {
+                    32
+                } else {
+                    64
+                };
                 (bits, self.actual_min, true)
             }
 
             // Compact: use hints
             FieldEncoding::Compact { min_hint, max_hint } => {
                 let hint_range = (max_hint - min_hint) as u64;
-                let bits = if hint_range <= 0xFF { 8 }
-                    else if hint_range <= 0xFFFF { 16 }
-                    else if hint_range <= 0xFFFF_FFFF { 32 }
-                    else { 64 };
+                let bits = if hint_range <= 0xFF {
+                    8
+                } else if hint_range <= 0xFFFF {
+                    16
+                } else if hint_range <= 0xFFFF_FFFF {
+                    32
+                } else {
+                    64
+                };
                 (bits, min_hint, true)
             }
 
@@ -541,27 +566,35 @@ impl AdaptiveIntEncoder {
                 buf.reserve(self.values.len());
                 for &v in &self.values {
                     let packed = (v - offset) as u8;
-                    unsafe { buf.push_unchecked(packed); }
+                    unsafe {
+                        buf.push_unchecked(packed);
+                    }
                 }
             }
             16 => {
                 buf.reserve(self.values.len() * 2);
                 for &v in &self.values {
                     let packed = (v - offset) as u16;
-                    unsafe { buf.extend_unchecked(&packed.to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&packed.to_le_bytes());
+                    }
                 }
             }
             32 => {
                 buf.reserve(self.values.len() * 4);
                 for &v in &self.values {
                     let packed = (v - offset) as u32;
-                    unsafe { buf.extend_unchecked(&packed.to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&packed.to_le_bytes());
+                    }
                 }
             }
             64 => {
                 buf.reserve(self.values.len() * 8);
                 for &v in &self.values {
-                    unsafe { buf.extend_unchecked(&v.to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&v.to_le_bytes());
+                    }
                 }
             }
             _ => unreachable!(),
@@ -601,10 +634,26 @@ impl AdaptiveStringEncoder {
     pub fn new(encoding: FieldEncoding, capacity: usize) -> Self {
         let use_dict = matches!(encoding, FieldEncoding::Dictionary | FieldEncoding::Auto);
         Self {
-            dict: if use_dict { HashMap::with_capacity(256) } else { HashMap::new() },
-            indices: if use_dict { Vec::with_capacity(capacity) } else { Vec::new() },
-            dict_strings: if use_dict { Vec::with_capacity(256) } else { Vec::new() },
-            inline_data: if !use_dict { UltraBuffer::with_capacity(capacity * 16) } else { UltraBuffer::new() },
+            dict: if use_dict {
+                HashMap::with_capacity(256)
+            } else {
+                HashMap::new()
+            },
+            indices: if use_dict {
+                Vec::with_capacity(capacity)
+            } else {
+                Vec::new()
+            },
+            dict_strings: if use_dict {
+                Vec::with_capacity(256)
+            } else {
+                Vec::new()
+            },
+            inline_data: if !use_dict {
+                UltraBuffer::with_capacity(capacity * 16)
+            } else {
+                UltraBuffer::new()
+            },
             encoding,
             count: 0,
         }
@@ -656,11 +705,15 @@ impl AdaptiveStringEncoder {
         self.inline_data.reserve(len + 4);
 
         if len < 128 {
-            unsafe { self.inline_data.push_unchecked(len as u8); }
+            unsafe {
+                self.inline_data.push_unchecked(len as u8);
+            }
         } else {
             encode_varint_fast(len as u64, &mut self.inline_data);
         }
-        unsafe { self.inline_data.extend_unchecked(s.as_bytes()); }
+        unsafe {
+            self.inline_data.extend_unchecked(s.as_bytes());
+        }
     }
 
     /// Encode to buffer
@@ -688,19 +741,25 @@ impl AdaptiveStringEncoder {
                 buf.reserve(packed_len);
                 for chunk in self.indices.chunks(2) {
                     let byte = (chunk[0] as u8) | ((chunk.get(1).copied().unwrap_or(0) as u8) << 4);
-                    unsafe { buf.push_unchecked(byte); }
+                    unsafe {
+                        buf.push_unchecked(byte);
+                    }
                 }
             } else if dict_size <= 256 {
                 // 8-bit indices
                 buf.reserve(self.indices.len());
                 for &idx in &self.indices {
-                    unsafe { buf.push_unchecked(idx as u8); }
+                    unsafe {
+                        buf.push_unchecked(idx as u8);
+                    }
                 }
             } else {
                 // 16-bit indices
                 buf.reserve(self.indices.len() * 2);
                 for &idx in &self.indices {
-                    unsafe { buf.extend_unchecked(&idx.to_le_bytes()); }
+                    unsafe {
+                        buf.extend_unchecked(&idx.to_le_bytes());
+                    }
                 }
             }
         } else {
@@ -719,10 +778,14 @@ impl AdaptiveStringEncoder {
 pub fn encode_varint_fast(mut value: u64, buf: &mut UltraBuffer) {
     buf.reserve(10);
     while value >= 0x80 {
-        unsafe { buf.push_unchecked((value as u8) | 0x80); }
+        unsafe {
+            buf.push_unchecked((value as u8) | 0x80);
+        }
         value >>= 7;
     }
-    unsafe { buf.push_unchecked(value as u8); }
+    unsafe {
+        buf.push_unchecked(value as u8);
+    }
 }
 
 /// Encode signed varint using zigzag encoding
@@ -768,7 +831,9 @@ pub trait TableEncode {
     fn schema() -> TableSchema;
 
     /// Encode a slice of items using the schema
-    fn encode_with_schema(items: &[Self]) -> Vec<u8> where Self: Sized;
+    fn encode_with_schema(items: &[Self]) -> Vec<u8>
+    where
+        Self: Sized;
 }
 
 // =============================================================================
@@ -796,7 +861,10 @@ mod tests {
         assert_eq!(schema.columns().len(), 8);
         assert_eq!(schema.encoding(0), Some(FieldEncoding::U32));
         assert_eq!(schema.encoding(2), Some(FieldEncoding::U8));
-        assert_eq!(schema.encoding_by_name("city"), Some(FieldEncoding::Dictionary));
+        assert_eq!(
+            schema.encoding_by_name("city"),
+            Some(FieldEncoding::Dictionary)
+        );
         assert_eq!(schema.encoding_by_name("name"), Some(FieldEncoding::Inline));
     }
 

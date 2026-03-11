@@ -4,12 +4,12 @@
 //! 1. **Self-describing mode**: Every value has a type tag (flexible but larger)
 //! 2. **Schema mode**: For homogeneous sequences, emit schema once then values without tags
 
-use super::dictionary::StringDictionary;
-use super::schema::{SchemaType, SchemaRegistry};
-use super::stats_collector::StatisticsCollector;
 use super::adaptive_encode::CodecAnalyzer;
+use super::dictionary::StringDictionary;
+use super::schema::{SchemaRegistry, SchemaType};
+use super::stats_collector::StatisticsCollector;
 use super::varint::*;
-use super::{TBF_MAGIC, TBF_VERSION, FLAG_DICTIONARY, FLAG_CODEC_METADATA, TypeTag};
+use super::{FLAG_CODEC_METADATA, FLAG_DICTIONARY, TBF_MAGIC, TBF_VERSION, TypeTag};
 use std::collections::HashMap;
 
 /// Encoding mode flags
@@ -194,7 +194,10 @@ impl TbfSerializer {
         if !self.codec_metadata.is_empty() {
             use super::varint::encode_varint;
             // Write codec count
-            encode_varint(self.codec_metadata.len() as u64, &mut self.codec_metadata_buf);
+            encode_varint(
+                self.codec_metadata.len() as u64,
+                &mut self.codec_metadata_buf,
+            );
             // Write each codec metadata
             for metadata in &self.codec_metadata {
                 let encoded = metadata.encode();
@@ -218,7 +221,10 @@ impl TbfSerializer {
         flags |= mode << 4;
 
         let mut result = Vec::with_capacity(
-            8 + dict_buf.len() + self.schema_buf.len() + self.codec_metadata_buf.len() + self.buf.len()
+            8 + dict_buf.len()
+                + self.schema_buf.len()
+                + self.codec_metadata_buf.len()
+                + self.buf.len(),
         );
 
         // Write header
@@ -359,7 +365,9 @@ impl TbfSerializer {
 
     /// Get expected field type for current position (schema mode)
     pub(crate) fn get_expected_field_type(&self, field_idx: usize) -> Option<SchemaType> {
-        self.context.seq_schema.as_ref()
+        self.context
+            .seq_schema
+            .as_ref()
             .and_then(|s| s.types.get(field_idx).copied())
     }
 }
@@ -408,7 +416,10 @@ impl<'a> SequenceEncoder<'a> {
     /// Called when a struct field is serialized
     pub fn field_serialized(&mut self, name: &str, typ: SchemaType) {
         if self.element_count == 1 {
-            self.serializer.context.current_fields.push((name.to_string(), typ));
+            self.serializer
+                .context
+                .current_fields
+                .push((name.to_string(), typ));
         }
     }
 
@@ -416,10 +427,18 @@ impl<'a> SequenceEncoder<'a> {
     pub fn first_struct_ended(&mut self) {
         if self.element_count == 1 && !self.serializer.context.current_fields.is_empty() {
             // Create schema from collected fields
-            let fields: Vec<String> = self.serializer.context.current_fields.iter()
+            let fields: Vec<String> = self
+                .serializer
+                .context
+                .current_fields
+                .iter()
                 .map(|(n, _)| n.clone())
                 .collect();
-            let types: Vec<SchemaType> = self.serializer.context.current_fields.iter()
+            let types: Vec<SchemaType> = self
+                .serializer
+                .context
+                .current_fields
+                .iter()
                 .map(|(_, t)| *t)
                 .collect();
 
@@ -453,7 +472,11 @@ impl<'a> SchemaStructSerializer<'a> {
     /// Create a new schema-aware struct serializer
     pub fn new(serializer: &'a mut TbfSerializer, schema_mode: bool) -> Self {
         let expected_types = if schema_mode {
-            serializer.context.seq_schema.as_ref().map(|s| s.types.clone())
+            serializer
+                .context
+                .seq_schema
+                .as_ref()
+                .map(|s| s.types.clone())
         } else {
             None
         };
@@ -468,7 +491,8 @@ impl<'a> SchemaStructSerializer<'a> {
 
     /// Get expected type for current field
     pub fn expected_type(&self) -> Option<SchemaType> {
-        self.expected_types.as_ref()
+        self.expected_types
+            .as_ref()
             .and_then(|types| types.get(self.field_idx).copied())
     }
 
@@ -551,14 +575,12 @@ mod tests {
         let mut serializer = TbfSerializer::with_codecs();
 
         // Simulate selecting codecs for fields
-        serializer.selected_codecs.insert(
-            "field1".to_string(),
-            CompressionCodec::Dictionary,
-        );
-        serializer.selected_codecs.insert(
-            "field2".to_string(),
-            CompressionCodec::Delta,
-        );
+        serializer
+            .selected_codecs
+            .insert("field1".to_string(), CompressionCodec::Dictionary);
+        serializer
+            .selected_codecs
+            .insert("field2".to_string(), CompressionCodec::Delta);
 
         assert_eq!(serializer.selected_codecs.len(), 2);
         assert_eq!(
@@ -592,7 +614,9 @@ mod tests {
 
         // Add codec metadata
         serializer.add_codec_metadata(CodecMetadata::Delta { initial_value: 100 });
-        serializer.add_codec_metadata(CodecMetadata::Dictionary { dictionary_size: 50 });
+        serializer.add_codec_metadata(CodecMetadata::Dictionary {
+            dictionary_size: 50,
+        });
 
         assert_eq!(serializer.codec_metadata_count(), 2);
     }
@@ -623,7 +647,9 @@ mod tests {
 
         // Add codec metadata
         serializer.add_codec_metadata(CodecMetadata::RLE);
-        serializer.add_codec_metadata(CodecMetadata::Dictionary { dictionary_size: 100 });
+        serializer.add_codec_metadata(CodecMetadata::Dictionary {
+            dictionary_size: 100,
+        });
 
         let bytes = serializer.into_bytes();
 
@@ -659,7 +685,10 @@ mod tests {
         // Check header does NOT have codec metadata flag
         let flags = bytes[5];
         // FLAG_CODEC_METADATA = 0x04 should not be set
-        assert!(flags & 0x04 == 0, "Codec metadata flag should not be set when no codecs");
+        assert!(
+            flags & 0x04 == 0,
+            "Codec metadata flag should not be set when no codecs"
+        );
     }
 
     #[test]

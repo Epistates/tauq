@@ -8,7 +8,7 @@
 //! All optimizations are portable and work on stable Rust.
 //! When the `performance` feature is enabled, uses rayon for parallelization.
 
-use crate::error::{TauqError, InterpretError};
+use crate::error::{InterpretError, TauqError};
 
 /// Optimized batch decode for f32 values using SIMD-friendly loads
 ///
@@ -99,9 +99,7 @@ pub fn fast_decode_varint_opt(bytes: &[u8]) -> Result<(u64, usize), TauqError> {
 
         // Sanity check: varints shouldn't be longer than 10 bytes (64-bit)
         if pos > 10 {
-            return Err(TauqError::Interpret(InterpretError::new(
-                "Varint too long",
-            )));
+            return Err(TauqError::Interpret(InterpretError::new("Varint too long")));
         }
     }
 }

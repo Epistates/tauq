@@ -5,7 +5,7 @@
 
 use super::dictionary::{BorrowedDictionary, StringDictionary};
 use super::schema::{Schema, SchemaType};
-use super::varint::{encode_varint, decode_varint, encode_signed_varint, decode_signed_varint};
+use super::varint::{decode_signed_varint, decode_varint, encode_signed_varint, encode_varint};
 use crate::error::{InterpretError, TauqError};
 
 /// Trait for types that can be encoded to TBF format
@@ -32,23 +32,35 @@ pub trait TbfEncode {
     fn tbf_encode_to(&self, buf: &mut Vec<u8>, dict: &mut StringDictionary);
 
     /// Get the schema for this type
-    fn tbf_schema() -> Schema where Self: Sized {
+    fn tbf_schema() -> Schema
+    where
+        Self: Sized,
+    {
         Schema::new(std::any::type_name::<Self>())
     }
 
     /// Get the SchemaType for this type (for field type inference)
-    fn tbf_schema_type() -> SchemaType where Self: Sized {
+    fn tbf_schema_type() -> SchemaType
+    where
+        Self: Sized,
+    {
         SchemaType::Map // Default for complex types
     }
 
     /// Get the number of fields (0 for primitives)
-    fn tbf_field_count() -> usize where Self: Sized {
+    fn tbf_field_count() -> usize
+    where
+        Self: Sized,
+    {
         0
     }
 
     /// Encode to a new Vec with header
-    fn tbf_encode(&self) -> Vec<u8> where Self: Sized {
-        use super::{TBF_MAGIC, TBF_VERSION, FLAG_DICTIONARY};
+    fn tbf_encode(&self) -> Vec<u8>
+    where
+        Self: Sized,
+    {
+        use super::{FLAG_DICTIONARY, TBF_MAGIC, TBF_VERSION};
 
         let mut dict = StringDictionary::new();
         let mut data_buf = Vec::with_capacity(256);
@@ -78,8 +90,11 @@ pub trait TbfEncode {
     }
 
     /// Encode a slice of items with schema optimization
-    fn tbf_encode_slice(items: &[Self]) -> Vec<u8> where Self: Sized {
-        use super::{TBF_MAGIC, TBF_VERSION, FLAG_DICTIONARY};
+    fn tbf_encode_slice(items: &[Self]) -> Vec<u8>
+    where
+        Self: Sized,
+    {
+        use super::{FLAG_DICTIONARY, TBF_MAGIC, TBF_VERSION};
 
         let mut dict = StringDictionary::new();
         let mut data_buf = Vec::with_capacity(items.len() * 64);
@@ -157,9 +172,10 @@ pub trait TbfDecode: Sized {
         }
 
         if bytes[4] != TBF_VERSION {
-            return Err(TauqError::Interpret(InterpretError::new(
-                format!("Unsupported TBF version: {}", bytes[4]),
-            )));
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Unsupported TBF version: {}",
+                bytes[4]
+            ))));
         }
 
         let mut pos = 8;
@@ -190,9 +206,10 @@ pub trait TbfDecode: Sized {
         }
 
         if bytes[4] != TBF_VERSION {
-            return Err(TauqError::Interpret(InterpretError::new(
-                format!("Unsupported TBF version: {}", bytes[4]),
-            )));
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Unsupported TBF version: {}",
+                bytes[4]
+            ))));
         }
 
         let mut pos = 8;
@@ -230,9 +247,15 @@ impl TbfEncode for bool {
 }
 
 impl TbfDecode for bool {
-    fn tbf_decode_from(buf: &[u8], pos: &mut usize, _dict: &BorrowedDictionary) -> Result<Self, TauqError> {
+    fn tbf_decode_from(
+        buf: &[u8],
+        pos: &mut usize,
+        _dict: &BorrowedDictionary,
+    ) -> Result<Self, TauqError> {
         if *pos >= buf.len() {
-            return Err(TauqError::Interpret(InterpretError::new("Unexpected end of buffer")));
+            return Err(TauqError::Interpret(InterpretError::new(
+                "Unexpected end of buffer",
+            )));
         }
         let value = buf[*pos] != 0;
         *pos += 1;
@@ -302,9 +325,15 @@ impl TbfEncode for f32 {
 }
 
 impl TbfDecode for f32 {
-    fn tbf_decode_from(buf: &[u8], pos: &mut usize, _dict: &BorrowedDictionary) -> Result<Self, TauqError> {
+    fn tbf_decode_from(
+        buf: &[u8],
+        pos: &mut usize,
+        _dict: &BorrowedDictionary,
+    ) -> Result<Self, TauqError> {
         if *pos + 4 > buf.len() {
-            return Err(TauqError::Interpret(InterpretError::new("Unexpected end of buffer")));
+            return Err(TauqError::Interpret(InterpretError::new(
+                "Unexpected end of buffer",
+            )));
         }
         let bytes: [u8; 4] = buf[*pos..*pos + 4].try_into().unwrap();
         *pos += 4;
@@ -323,9 +352,15 @@ impl TbfEncode for f64 {
 }
 
 impl TbfDecode for f64 {
-    fn tbf_decode_from(buf: &[u8], pos: &mut usize, _dict: &BorrowedDictionary) -> Result<Self, TauqError> {
+    fn tbf_decode_from(
+        buf: &[u8],
+        pos: &mut usize,
+        _dict: &BorrowedDictionary,
+    ) -> Result<Self, TauqError> {
         if *pos + 8 > buf.len() {
-            return Err(TauqError::Interpret(InterpretError::new("Unexpected end of buffer")));
+            return Err(TauqError::Interpret(InterpretError::new(
+                "Unexpected end of buffer",
+            )));
         }
         let bytes: [u8; 8] = buf[*pos..*pos + 8].try_into().unwrap();
         *pos += 8;
@@ -345,7 +380,11 @@ impl TbfEncode for String {
 }
 
 impl TbfDecode for String {
-    fn tbf_decode_from(buf: &[u8], pos: &mut usize, dict: &BorrowedDictionary) -> Result<Self, TauqError> {
+    fn tbf_decode_from(
+        buf: &[u8],
+        pos: &mut usize,
+        dict: &BorrowedDictionary,
+    ) -> Result<Self, TauqError> {
         let (idx, len) = decode_varint(&buf[*pos..])?;
         *pos += len;
         dict.get(idx as u32)
@@ -383,7 +422,11 @@ impl<T: TbfEncode> TbfEncode for Vec<T> {
 }
 
 impl<T: TbfDecode> TbfDecode for Vec<T> {
-    fn tbf_decode_from(buf: &[u8], pos: &mut usize, dict: &BorrowedDictionary) -> Result<Self, TauqError> {
+    fn tbf_decode_from(
+        buf: &[u8],
+        pos: &mut usize,
+        dict: &BorrowedDictionary,
+    ) -> Result<Self, TauqError> {
         let (count, len) = decode_varint(&buf[*pos..])?;
         *pos += len;
 
@@ -412,9 +455,15 @@ impl<T: TbfEncode> TbfEncode for Option<T> {
 }
 
 impl<T: TbfDecode> TbfDecode for Option<T> {
-    fn tbf_decode_from(buf: &[u8], pos: &mut usize, dict: &BorrowedDictionary) -> Result<Self, TauqError> {
+    fn tbf_decode_from(
+        buf: &[u8],
+        pos: &mut usize,
+        dict: &BorrowedDictionary,
+    ) -> Result<Self, TauqError> {
         if *pos >= buf.len() {
-            return Err(TauqError::Interpret(InterpretError::new("Unexpected end of buffer")));
+            return Err(TauqError::Interpret(InterpretError::new(
+                "Unexpected end of buffer",
+            )));
         }
 
         let tag = buf[*pos];
@@ -423,7 +472,9 @@ impl<T: TbfDecode> TbfDecode for Option<T> {
         match tag {
             0 => Ok(None),
             1 => Ok(Some(T::tbf_decode_from(buf, pos, dict)?)),
-            _ => Err(TauqError::Interpret(InterpretError::new("Invalid Option tag"))),
+            _ => Err(TauqError::Interpret(InterpretError::new(
+                "Invalid Option tag",
+            ))),
         }
     }
 }
@@ -439,7 +490,11 @@ impl<T: TbfEncode> TbfEncode for Box<T> {
 }
 
 impl<T: TbfDecode> TbfDecode for Box<T> {
-    fn tbf_decode_from(buf: &[u8], pos: &mut usize, dict: &BorrowedDictionary) -> Result<Self, TauqError> {
+    fn tbf_decode_from(
+        buf: &[u8],
+        pos: &mut usize,
+        dict: &BorrowedDictionary,
+    ) -> Result<Self, TauqError> {
         Ok(Box::new(T::tbf_decode_from(buf, pos, dict)?))
     }
 }
@@ -453,7 +508,11 @@ impl TbfEncode for () {
 }
 
 impl TbfDecode for () {
-    fn tbf_decode_from(_buf: &[u8], _pos: &mut usize, _dict: &BorrowedDictionary) -> Result<Self, TauqError> {
+    fn tbf_decode_from(
+        _buf: &[u8],
+        _pos: &mut usize,
+        _dict: &BorrowedDictionary,
+    ) -> Result<Self, TauqError> {
         Ok(())
     }
 }

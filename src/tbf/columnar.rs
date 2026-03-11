@@ -660,15 +660,18 @@ mod tests {
 
         let columnar_bytes = TestEmployee::columnar_encode_slice(&employees);
         let json_bytes = serde_json::to_string(&serde_json::json!(
-            employees.iter().map(|e| {
-                serde_json::json!({
-                    "id": e.id,
-                    "name": e.name,
-                    "age": e.age,
-                    "salary": e.salary,
-                    "active": e.active
+            employees
+                .iter()
+                .map(|e| {
+                    serde_json::json!({
+                        "id": e.id,
+                        "name": e.name,
+                        "age": e.age,
+                        "salary": e.salary,
+                        "active": e.active
+                    })
                 })
-            }).collect::<Vec<_>>()
+                .collect::<Vec<_>>()
         ))
         .unwrap();
 

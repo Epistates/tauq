@@ -3,8 +3,8 @@
 //! Schemas enable type-tag-free encoding by defining the structure upfront.
 //! This achieves significant size reduction for homogeneous data.
 
-use super::varint::{encode_varint, decode_varint};
 use super::dictionary::StringDictionary;
+use super::varint::{decode_varint, encode_varint};
 use crate::error::{InterpretError, TauqError};
 
 /// Field type tag for schema definitions
@@ -170,13 +170,17 @@ impl Schema {
     }
 
     /// Decode schema from bytes
-    pub fn decode(bytes: &[u8], dict: &super::dictionary::BorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    pub fn decode(
+        bytes: &[u8],
+        dict: &super::dictionary::BorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         let mut pos = 0;
 
         // Schema name
         let (name_idx, len) = decode_varint(bytes)?;
         pos += len;
-        let name = dict.get(name_idx as u32)
+        let name = dict
+            .get(name_idx as u32)
             .ok_or_else(|| TauqError::Interpret(InterpretError::new("Invalid schema name index")))?
             .to_string();
 
@@ -184,14 +188,24 @@ impl Schema {
         let (field_count, len) = decode_varint(&bytes[pos..])?;
         pos += len;
 
+        if field_count > 10_000 {
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Schema field count {} exceeds maximum 10000",
+                field_count
+            ))));
+        }
+
         let mut fields = Vec::with_capacity(field_count as usize);
 
         for _ in 0..field_count {
             // Field name
             let (field_idx, len) = decode_varint(&bytes[pos..])?;
             pos += len;
-            let field_name = dict.get(field_idx as u32)
-                .ok_or_else(|| TauqError::Interpret(InterpretError::new("Invalid field name index")))?
+            let field_name = dict
+                .get(field_idx as u32)
+                .ok_or_else(|| {
+                    TauqError::Interpret(InterpretError::new("Invalid field name index"))
+                })?
                 .to_string();
 
             // Field type
@@ -264,7 +278,10 @@ impl SchemaRegistry {
     }
 
     /// Decode schemas from bytes
-    pub fn decode(bytes: &[u8], dict: &super::dictionary::BorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    pub fn decode(
+        bytes: &[u8],
+        dict: &super::dictionary::BorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         let mut pos = 0;
 
         let (count, len) = decode_varint(bytes)?;
@@ -374,7 +391,8 @@ mod tests {
         dict.encode(&mut dict_buf);
 
         // Decode
-        let (borrowed_dict, _) = super::super::dictionary::BorrowedDictionary::decode(&dict_buf).unwrap();
+        let (borrowed_dict, _) =
+            super::super::dictionary::BorrowedDictionary::decode(&dict_buf).unwrap();
         let (decoded, _) = Schema::decode(&buf, &borrowed_dict).unwrap();
 
         assert_eq!(decoded.name, "User");

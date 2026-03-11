@@ -3,19 +3,22 @@
 //! The dictionary interns strings and assigns each unique string an index.
 //! This enables compact encoding of repeated strings.
 
+use super::varint::{decode_varint, encode_varint};
 use crate::error::{InterpretError, TauqError};
-use super::varint::{encode_varint, decode_varint};
 use std::collections::HashMap;
+
+/// Maximum number of dictionary entries to prevent allocation amplification attacks
+const MAX_DICT_ENTRIES: u64 = 1_000_000;
 
 /// String dictionary for deduplicating strings
 ///
-/// Optimized to avoid double allocation during interning.
+/// Keys by actual string content to correctly handle hash collisions.
 #[derive(Debug, Default)]
 pub struct StringDictionary {
     /// Stored strings in order of insertion
     strings: Vec<String>,
-    /// Map from string content to index (uses string hash for lookup)
-    index: HashMap<u64, u32>,
+    /// Map from string content to index
+    index: HashMap<String, u32>,
 }
 
 impl StringDictionary {
@@ -34,54 +37,28 @@ impl StringDictionary {
         }
     }
 
-    /// Fast string hash using FNV-1a
-    #[inline(always)]
-    fn hash_str(s: &str) -> u64 {
-        let mut hash: u64 = 0xcbf29ce484222325; // FNV offset basis
-        for byte in s.bytes() {
-            hash ^= byte as u64;
-            hash = hash.wrapping_mul(0x100000001b3); // FNV prime
-        }
-        hash
-    }
-
     /// Add a string and return its index
-    ///
-    /// Optimized to avoid double string allocation.
     #[inline]
     pub fn intern(&mut self, s: &str) -> u32 {
-        let hash = Self::hash_str(s);
-
-        // Check if already interned
-        if let Some(&idx) = self.index.get(&hash) {
-            // Verify it's actually the same string (handle hash collisions)
-            if self.strings[idx as usize] == s {
-                return idx;
-            }
-            // Hash collision - linear probe for empty slot
-            // In practice this is rare with FNV-1a on strings
-        }
-
-        // New string - allocate once
-        let idx = self.strings.len() as u32;
-        self.strings.push(s.to_string());
-        self.index.insert(hash, idx);
-        idx
-    }
-
-    /// Intern a string that's already owned (avoids allocation)
-    #[inline]
-    pub fn intern_owned(&mut self, s: String) -> u32 {
-        let hash = Self::hash_str(&s);
-
-        if let Some(&idx) = self.index.get(&hash)
-            && self.strings[idx as usize] == s
-        {
+        if let Some(&idx) = self.index.get(s) {
             return idx;
         }
 
         let idx = self.strings.len() as u32;
-        self.index.insert(hash, idx);
+        self.index.insert(s.to_string(), idx);
+        self.strings.push(s.to_string());
+        idx
+    }
+
+    /// Intern a string that's already owned (avoids extra allocation)
+    #[inline]
+    pub fn intern_owned(&mut self, s: String) -> u32 {
+        if let Some(&idx) = self.index.get(&s) {
+            return idx;
+        }
+
+        let idx = self.strings.len() as u32;
+        self.index.insert(s.clone(), idx);
         self.strings.push(s);
         idx
     }
@@ -133,6 +110,13 @@ impl StringDictionary {
     pub fn decode(bytes: &[u8]) -> Result<(Self, usize), TauqError> {
         let (count, mut pos) = decode_varint(bytes)?;
 
+        if count > MAX_DICT_ENTRIES {
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Dictionary count {} exceeds maximum {}",
+                count, MAX_DICT_ENTRIES
+            ))));
+        }
+
         let mut dict = Self::with_capacity(count as usize);
 
         for _ in 0..count {
@@ -169,6 +153,13 @@ impl<'a> BorrowedDictionary<'a> {
     /// Decode dictionary with zero-copy string references
     pub fn decode(bytes: &'a [u8]) -> Result<(Self, usize), TauqError> {
         let (count, mut pos) = decode_varint(bytes)?;
+
+        if count > MAX_DICT_ENTRIES {
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Dictionary count {} exceeds maximum {}",
+                count, MAX_DICT_ENTRIES
+            ))));
+        }
 
         let mut strings = Vec::with_capacity(count as usize);
 

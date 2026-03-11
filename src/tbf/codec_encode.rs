@@ -100,9 +100,9 @@ impl CodecEncodingContext {
                         encoder.encode(num);
                         Ok(())
                     } else {
-                        Err(TauqError::Interpret(
-                            crate::error::InterpretError::new("Delta encoder not initialized"),
-                        ))
+                        Err(TauqError::Interpret(crate::error::InterpretError::new(
+                            "Delta encoder not initialized",
+                        )))
                     }
                 } else {
                     // Non-numeric - fallback to raw
@@ -113,9 +113,9 @@ impl CodecEncodingContext {
                 if let Some(ref mut encoder) = self.dict_encoder {
                     encoder.encode(value)
                 } else {
-                    Err(TauqError::Interpret(
-                        crate::error::InterpretError::new("Dictionary encoder not initialized"),
-                    ))
+                    Err(TauqError::Interpret(crate::error::InterpretError::new(
+                        "Dictionary encoder not initialized",
+                    )))
                 }
             }
             Some(CompressionCodec::RunLength) => {
@@ -123,9 +123,9 @@ impl CodecEncodingContext {
                     encoder.encode(value);
                     Ok(())
                 } else {
-                    Err(TauqError::Interpret(
-                        crate::error::InterpretError::new("RLE encoder not initialized"),
-                    ))
+                    Err(TauqError::Interpret(crate::error::InterpretError::new(
+                        "RLE encoder not initialized",
+                    )))
                 }
             }
             Some(CompressionCodec::Raw) | None => {
@@ -171,12 +171,12 @@ pub enum CodecMetadata {
     /// Delta encoding with initial value
     Delta {
         /// The initial base value for delta compression
-        initial_value: i64
+        initial_value: i64,
     },
     /// Dictionary encoding with size
     Dictionary {
         /// Number of entries in the dictionary
-        dictionary_size: u32
+        dictionary_size: u32,
     },
     /// Run-length encoding (no additional metadata needed)
     RLE,

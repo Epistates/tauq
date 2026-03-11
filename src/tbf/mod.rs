@@ -45,79 +45,113 @@
 //! └─────────────────────────────────────┘
 //! ```
 
-mod varint;
-mod dictionary;
-mod schema;
-mod encoder;
-mod decoder;
-mod serde_impl;
-mod traits;
-mod columnar;
-mod fast_encode;
-mod fast_decode;
-mod ultra_encode;
-mod schema_encode;
-mod stats;
-mod bitmap;
-mod bloom;
-mod stats_collector;
-mod simd_decode;
-mod parallel_encode;
-mod batch_encode;
+#[allow(dead_code)]
 mod adaptive_encode;
-mod predicate_pushdown;
-mod codec_encode;
+mod batch_encode;
+mod bitmap;
+#[allow(dead_code)]
+mod bloom;
+#[allow(dead_code)]
 mod codec_decode;
+#[allow(dead_code)]
+mod codec_encode;
+#[allow(dead_code)]
+mod columnar;
+mod decoder;
+mod dictionary;
+#[allow(dead_code)]
+mod encoder;
+#[allow(dead_code)]
+mod fast_decode;
+#[allow(dead_code)]
+mod fast_encode;
+#[allow(dead_code)]
+mod parallel_encode;
+mod predicate_pushdown;
+mod schema;
+#[allow(dead_code)]
+mod schema_encode;
+mod serde_impl;
+#[allow(dead_code)]
+mod simd_decode;
+mod stats;
+mod stats_collector;
+mod traits;
+#[allow(dead_code)]
+mod ultra_encode;
+#[allow(dead_code)]
+mod varint;
 
-pub use varint::*;
-pub use dictionary::*;
-pub use schema::*;
-pub use encoder::*;
-pub use decoder::*;
-pub use traits::{TbfEncode, TbfDecode};
+// ==========================================================================
+// Public API: Only export types needed by library consumers
+// ==========================================================================
+pub use decoder::{EnumAccess, MapAccess, SeqAccess, TbfDeserializer};
+pub use dictionary::{BorrowedDictionary, StringDictionary};
+pub use encoder::TbfSerializer;
+pub use schema::{Schema, SchemaField, SchemaRegistry, SchemaType, infer_schema_from_json};
+pub use traits::{TbfDecode, TbfEncode};
+pub use varint::{decode_signed_varint, decode_varint, encode_signed_varint, encode_varint};
+
+// Schema-aware encoding API
+pub use schema_encode::{
+    ColumnSchema, FieldEncoding, TableEncode, TableSchema, TableSchemaBuilder,
+};
+
+// Columnar encoding API
 pub use columnar::{
-    ColumnarEncoder, ColumnarDecoder, ColumnReader, ColumnType, ColumnEncoding, ColumnMeta,
-    ColumnarEncode, ColumnarDecode, TBC_MAGIC, TBC_VERSION,
+    ColumnarDecode, ColumnarDecoder, ColumnarEncode, ColumnarEncoder, TBC_MAGIC, TBC_VERSION,
+};
+
+// Statistics
+pub use stats::ColumnStats;
+pub use stats_collector::StatisticsCollector;
+
+// Fast encode/decode for advanced users
+pub use fast_decode::{
+    FastBorrowedDictionary, FastDecode, fast_decode_signed_varint, fast_decode_varint,
 };
 pub use fast_encode::{
-    FastEncode, FastBuffer, FastStringDictionary, fast_encode_slice,
-    fast_encode_varint, fast_encode_signed_varint,
+    FastBuffer, FastEncode, FastStringDictionary, fast_encode_signed_varint, fast_encode_slice,
+    fast_encode_varint,
 };
-pub use fast_decode::{
-    FastDecode, FastBorrowedDictionary, fast_decode_varint, fast_decode_signed_varint,
-    batch_decode_u32, batch_decode_u64, batch_decode_i32, batch_decode_i64,
-    batch_decode_f32, batch_decode_f64, batch_decode_bool, batch_decode_strings,
-};
-pub use ultra_encode::{
-    UltraEncode, UltraEncodeDirect, UltraBuffer, ColumnCollectors, ColumnData,
-    ColumnType as UltraColumnType, IntPacking, pack_u32_adaptive, pack_u64_adaptive,
-    encode_varint_to_ultra, DirectU32Encoder, DirectStringEncoder,
-    ULTRA_MAGIC, ULTRA_VERSION,
-};
-pub use schema_encode::{
-    // Type-based schema API
-    FieldEncoding, ColumnSchema, TableSchema, TableSchemaBuilder, TableEncode,
-    AdaptiveIntEncoder, AdaptiveStringEncoder,
-    // Utilities
-    with_scratch, with_output, encode_varint_fast, encode_signed_varint_fast, SCHEMA_MAGIC,
-};
-pub use stats::ColumnStats;
-pub use bitmap::NullBitmap;
-pub use bloom::BloomFilter;
-pub use stats_collector::StatisticsCollector;
-pub use adaptive_encode::{
-    CompressionCodec, CodecAnalyzer, CodecAnalysis,
-    DeltaEncoder, DictionaryEncoder, RLEEncoder, RunLengthValue,
-};
+
+// Predicate pushdown
 pub use predicate_pushdown::{Predicate, QueryFilter};
+
+// Bloom filter
+pub use bloom::BloomFilter;
+
+// Null bitmap
+pub use bitmap::NullBitmap;
+
+// Adaptive codecs (public for benchmarks and advanced use)
+pub use adaptive_encode::{CodecAnalysis, CodecAnalyzer, CompressionCodec};
+
+// Batch encoding
+pub use batch_encode::{BatchEncoder, BatchEncodingStats};
+
+// Ultra encoding (public for benchmarks)
+pub use ultra_encode::{
+    ColumnCollectors, DirectStringEncoder, DirectU32Encoder, ULTRA_MAGIC, ULTRA_VERSION,
+    UltraBuffer, UltraEncode, UltraEncodeDirect, encode_varint_to_ultra,
+};
+// Re-export ultra_encode::ColumnType under the name benchmarks expect
+pub use ultra_encode::ColumnType as UltraColumnType;
+
+// Columnar encoding types (public for benchmarks)
+pub use columnar::{ColumnReader, ColumnType};
+
+// Codec encode/decode (public for benchmarks)
+pub use codec_decode::CodecDecodingContext;
 pub use codec_encode::{CodecEncodingContext, CodecMetadata};
-pub use codec_decode::{CodecDecodingContext, decode_codec_metadata};
+
+// Schema encoding (public for benchmarks)
+pub use schema_encode::{
+    AdaptiveIntEncoder, AdaptiveStringEncoder, SCHEMA_MAGIC, encode_varint_fast,
+};
 
 #[cfg(feature = "performance")]
 pub use parallel_encode::{ParallelBatchEncoder, ParallelEncodingStats};
-#[cfg(all(feature = "performance", test))]
-pub use parallel_encode::ParallelStringDictionary;
-pub use batch_encode::{BatchEncoder, BatchEncodingStats};
 
 // serde_impl exports are not needed at module level
 
@@ -259,7 +293,10 @@ pub fn to_bytes<T: serde::Serialize>(value: &T) -> Result<Vec<u8>, TauqError> {
 }
 
 /// Serialize a value to TBF bytes with pre-allocated capacity
-pub fn to_bytes_with_capacity<T: serde::Serialize>(value: &T, capacity: usize) -> Result<Vec<u8>, TauqError> {
+pub fn to_bytes_with_capacity<T: serde::Serialize>(
+    value: &T,
+    capacity: usize,
+) -> Result<Vec<u8>, TauqError> {
     let mut serializer = TbfSerializer::with_capacity(capacity);
     value.serialize(&mut serializer)?;
     Ok(serializer.into_bytes())
@@ -352,9 +389,24 @@ mod tests {
     #[test]
     fn test_vec_roundtrip() {
         let users = vec![
-            TestUser { id: 1, name: "Alice".into(), age: 30, active: true },
-            TestUser { id: 2, name: "Bob".into(), age: 25, active: false },
-            TestUser { id: 3, name: "Carol".into(), age: 35, active: true },
+            TestUser {
+                id: 1,
+                name: "Alice".into(),
+                age: 30,
+                active: true,
+            },
+            TestUser {
+                id: 2,
+                name: "Bob".into(),
+                age: 25,
+                active: false,
+            },
+            TestUser {
+                id: 3,
+                name: "Carol".into(),
+                age: 35,
+                active: true,
+            },
         ];
 
         let bytes = to_bytes(&users).unwrap();
@@ -391,7 +443,10 @@ mod tests {
         let none: Option<i32> = None;
 
         assert_eq!(some, from_bytes(&to_bytes(&some).unwrap()).unwrap());
-        assert_eq!(none, from_bytes::<Option<i32>>(&to_bytes(&none).unwrap()).unwrap());
+        assert_eq!(
+            none,
+            from_bytes::<Option<i32>>(&to_bytes(&none).unwrap()).unwrap()
+        );
     }
 
     #[test]
@@ -446,7 +501,8 @@ mod tests {
                 name: format!("Employee{}", i),
                 age: 25 + (i % 40),
                 city: ["NYC", "LA", "Chicago", "Houston", "Phoenix"][i as usize % 5].into(),
-                department: ["Engineering", "Sales", "Marketing", "HR", "Finance"][i as usize % 5].into(),
+                department: ["Engineering", "Sales", "Marketing", "HR", "Finance"][i as usize % 5]
+                    .into(),
                 salary: 50000 + (i * 1000),
             })
             .collect();

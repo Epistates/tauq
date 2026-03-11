@@ -3,10 +3,10 @@
 //! This module implements the serde Serializer and Deserializer traits
 //! for direct, high-performance binary serialization.
 
-use super::encoder::TbfSerializer;
-use super::decoder::{TbfDeserializer, SeqAccess, MapAccess, EnumAccess};
-use super::varint::*;
 use super::TypeTag;
+use super::decoder::{EnumAccess, MapAccess, SeqAccess, TbfDeserializer};
+use super::encoder::TbfSerializer;
+use super::varint::*;
 use crate::error::{InterpretError, TauqError};
 use serde::de::{self, Visitor};
 use serde::ser;
@@ -144,7 +144,10 @@ impl ser::Serializer for &mut TbfSerializer {
         Ok(())
     }
 
-    fn serialize_some<T: ?Sized + serde::Serialize>(self, value: &T) -> Result<Self::Ok, Self::Error> {
+    fn serialize_some<T: ?Sized + serde::Serialize>(
+        self,
+        value: &T,
+    ) -> Result<Self::Ok, Self::Error> {
         self.write_tag(TypeTag::Some);
         value.serialize(self)
     }
@@ -255,7 +258,10 @@ impl ser::SerializeSeq for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
-    fn serialize_element<T: ?Sized + serde::Serialize>(&mut self, value: &T) -> Result<(), Self::Error> {
+    fn serialize_element<T: ?Sized + serde::Serialize>(
+        &mut self,
+        value: &T,
+    ) -> Result<(), Self::Error> {
         value.serialize(&mut **self)
     }
 
@@ -268,7 +274,10 @@ impl ser::SerializeTuple for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
-    fn serialize_element<T: ?Sized + serde::Serialize>(&mut self, value: &T) -> Result<(), Self::Error> {
+    fn serialize_element<T: ?Sized + serde::Serialize>(
+        &mut self,
+        value: &T,
+    ) -> Result<(), Self::Error> {
         value.serialize(&mut **self)
     }
 
@@ -281,7 +290,10 @@ impl ser::SerializeTupleStruct for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
-    fn serialize_field<T: ?Sized + serde::Serialize>(&mut self, value: &T) -> Result<(), Self::Error> {
+    fn serialize_field<T: ?Sized + serde::Serialize>(
+        &mut self,
+        value: &T,
+    ) -> Result<(), Self::Error> {
         value.serialize(&mut **self)
     }
 
@@ -294,7 +306,10 @@ impl ser::SerializeTupleVariant for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
-    fn serialize_field<T: ?Sized + serde::Serialize>(&mut self, value: &T) -> Result<(), Self::Error> {
+    fn serialize_field<T: ?Sized + serde::Serialize>(
+        &mut self,
+        value: &T,
+    ) -> Result<(), Self::Error> {
         value.serialize(&mut **self)
     }
 
@@ -311,7 +326,10 @@ impl ser::SerializeMap for &mut TbfSerializer {
         key.serialize(&mut **self)
     }
 
-    fn serialize_value<T: ?Sized + serde::Serialize>(&mut self, value: &T) -> Result<(), Self::Error> {
+    fn serialize_value<T: ?Sized + serde::Serialize>(
+        &mut self,
+        value: &T,
+    ) -> Result<(), Self::Error> {
         value.serialize(&mut **self)
     }
 
@@ -324,7 +342,11 @@ impl ser::SerializeStruct for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
-    fn serialize_field<T: ?Sized + serde::Serialize>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error> {
+    fn serialize_field<T: ?Sized + serde::Serialize>(
+        &mut self,
+        key: &'static str,
+        value: &T,
+    ) -> Result<(), Self::Error> {
         // Write key as string
         self.write_tag(TypeTag::String);
         self.write_string(key);
@@ -341,7 +363,11 @@ impl ser::SerializeStructVariant for &mut TbfSerializer {
     type Ok = ();
     type Error = TauqError;
 
-    fn serialize_field<T: ?Sized + serde::Serialize>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error> {
+    fn serialize_field<T: ?Sized + serde::Serialize>(
+        &mut self,
+        key: &'static str,
+        value: &T,
+    ) -> Result<(), Self::Error> {
         self.write_tag(TypeTag::String);
         self.write_string(key);
         value.serialize(&mut **self)
@@ -397,7 +423,9 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::U128 => visitor.visit_u128(self.read_u128_varint()?),
             TypeTag::F32 => visitor.visit_f32(self.read_f32()?),
             TypeTag::F64 => visitor.visit_f64(self.read_f64()?),
-            TypeTag::Char => visitor.visit_char(char::from_u32(self.read_varint()? as u32).unwrap_or('\0')),
+            TypeTag::Char => {
+                visitor.visit_char(char::from_u32(self.read_varint()? as u32).unwrap_or('\0'))
+            }
         }
     }
 
@@ -407,9 +435,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
     {
         let tag = self.read_tag()?;
         if tag != TypeTag::Bool {
-            return Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected bool, got {:?}", tag),
-            )));
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected bool, got {:?}",
+                tag
+            ))));
         }
         visitor.visit_bool(self.read_byte()? != 0)
     }
@@ -424,9 +453,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::I16 | TypeTag::I32 | TypeTag::I64 | TypeTag::Int => {
                 visitor.visit_i8(self.read_signed_varint()? as i8)
             }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected i8, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected i8, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -440,9 +470,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::I16 | TypeTag::I32 | TypeTag::I64 | TypeTag::Int => {
                 visitor.visit_i16(self.read_signed_varint()? as i16)
             }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected i16, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected i16, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -456,9 +487,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::I16 | TypeTag::I32 | TypeTag::I64 | TypeTag::Int => {
                 visitor.visit_i32(self.read_signed_varint()? as i32)
             }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected i32, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected i32, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -472,9 +504,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::I16 | TypeTag::I32 | TypeTag::I64 | TypeTag::Int => {
                 visitor.visit_i64(self.read_signed_varint()?)
             }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected i64, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected i64, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -489,9 +522,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::I16 | TypeTag::I32 | TypeTag::I64 | TypeTag::Int => {
                 visitor.visit_i128(self.read_signed_varint()? as i128)
             }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected i128, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected i128, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -505,9 +539,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::U16 | TypeTag::U32 | TypeTag::U64 => {
                 visitor.visit_u8(self.read_varint()? as u8)
             }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected u8, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected u8, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -521,9 +556,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::U16 | TypeTag::U32 | TypeTag::U64 => {
                 visitor.visit_u16(self.read_varint()? as u16)
             }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected u16, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected u16, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -537,9 +573,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::U16 | TypeTag::U32 | TypeTag::U64 => {
                 visitor.visit_u32(self.read_varint()? as u32)
             }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected u32, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected u32, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -550,12 +587,11 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
         let tag = self.read_tag()?;
         match tag {
             TypeTag::U8 => visitor.visit_u64(self.read_byte()? as u64),
-            TypeTag::U16 | TypeTag::U32 | TypeTag::U64 => {
-                visitor.visit_u64(self.read_varint()?)
-            }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected u64, got {:?}", tag),
-            ))),
+            TypeTag::U16 | TypeTag::U32 | TypeTag::U64 => visitor.visit_u64(self.read_varint()?),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected u64, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -570,9 +606,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
             TypeTag::U16 | TypeTag::U32 | TypeTag::U64 => {
                 visitor.visit_u128(self.read_varint()? as u128)
             }
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected u128, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected u128, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -584,9 +621,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
         match tag {
             TypeTag::F32 => visitor.visit_f32(self.read_f32()?),
             TypeTag::F64 | TypeTag::Float => visitor.visit_f32(self.read_f64()? as f32),
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected f32, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected f32, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -598,9 +636,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
         match tag {
             TypeTag::F32 => visitor.visit_f64(self.read_f32()? as f64),
             TypeTag::F64 | TypeTag::Float => visitor.visit_f64(self.read_f64()?),
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected f64, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected f64, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -610,9 +649,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
     {
         let tag = self.read_tag()?;
         if tag != TypeTag::Char {
-            return Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected char, got {:?}", tag),
-            )));
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected char, got {:?}",
+                tag
+            ))));
         }
         let code = self.read_varint()? as u32;
         visitor.visit_char(char::from_u32(code).unwrap_or('\0'))
@@ -624,9 +664,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
     {
         let tag = self.read_tag()?;
         if tag != TypeTag::String {
-            return Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected string, got {:?}", tag),
-            )));
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected string, got {:?}",
+                tag
+            ))));
         }
         visitor.visit_borrowed_str(self.read_string()?)
     }
@@ -644,9 +685,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
     {
         let tag = self.read_tag()?;
         if tag != TypeTag::Bytes {
-            return Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected bytes, got {:?}", tag),
-            )));
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected bytes, got {:?}",
+                tag
+            ))));
         }
         let len = self.read_varint()? as usize;
         visitor.visit_borrowed_bytes(self.read_bytes(len)?)
@@ -667,9 +709,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
         match tag {
             TypeTag::None | TypeTag::Null => visitor.visit_none(),
             TypeTag::Some => visitor.visit_some(self),
-            _ => Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected option, got {:?}", tag),
-            ))),
+            _ => Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected option, got {:?}",
+                tag
+            )))),
         }
     }
 
@@ -679,21 +722,30 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
     {
         let tag = self.read_tag()?;
         if tag != TypeTag::Unit && tag != TypeTag::Null {
-            return Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected unit, got {:?}", tag),
-            )));
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected unit, got {:?}",
+                tag
+            ))));
         }
         visitor.visit_unit()
     }
 
-    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_unit_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
         self.deserialize_unit(visitor)
     }
 
-    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_newtype_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -706,9 +758,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
     {
         let tag = self.read_tag()?;
         if tag != TypeTag::Seq {
-            return Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected seq, got {:?}", tag),
-            )));
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected seq, got {:?}",
+                tag
+            ))));
         }
         let len = self.read_varint()? as usize;
         visitor.visit_seq(SeqAccess::new(self, len))
@@ -739,9 +792,10 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
     {
         let tag = self.read_tag()?;
         if tag != TypeTag::Map {
-            return Err(TauqError::Interpret(InterpretError::new(
-                format!("Expected map, got {:?}", tag),
-            )));
+            return Err(TauqError::Interpret(InterpretError::new(format!(
+                "Expected map, got {:?}",
+                tag
+            ))));
         }
         let len = self.read_varint()? as usize;
         visitor.visit_map(MapAccess::new(self, len))
@@ -771,10 +825,12 @@ impl<'de> de::Deserializer<'de> for &mut TbfDeserializer<'de> {
         // Read variant index
         let variant_idx = self.read_varint()? as u32;
         // For simplicity, just visit the variant string
-        let variant = _variants.get(variant_idx as usize)
-            .ok_or_else(|| TauqError::Interpret(InterpretError::new(
-                format!("Invalid variant index: {}", variant_idx)
-            )))?;
+        let variant = _variants.get(variant_idx as usize).ok_or_else(|| {
+            TauqError::Interpret(InterpretError::new(format!(
+                "Invalid variant index: {}",
+                variant_idx
+            )))
+        })?;
         visitor.visit_enum(EnumAccess { de: self, variant })
     }
 

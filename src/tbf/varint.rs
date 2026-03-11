@@ -166,7 +166,18 @@ mod tests {
 
     #[test]
     fn test_varint_roundtrip() {
-        for value in [0u64, 1, 127, 128, 255, 256, 16383, 16384, u64::MAX / 2, u64::MAX] {
+        for value in [
+            0u64,
+            1,
+            127,
+            128,
+            255,
+            256,
+            16383,
+            16384,
+            u64::MAX / 2,
+            u64::MAX,
+        ] {
             let mut buf = Vec::new();
             encode_varint(value, &mut buf);
             let (decoded, _) = decode_varint(&buf).unwrap();
@@ -176,7 +187,17 @@ mod tests {
 
     #[test]
     fn test_signed_varint_roundtrip() {
-        for value in [0i64, 1, -1, 127, -128, i64::MIN / 2, i64::MAX / 2, i64::MIN, i64::MAX] {
+        for value in [
+            0i64,
+            1,
+            -1,
+            127,
+            -128,
+            i64::MIN / 2,
+            i64::MAX / 2,
+            i64::MIN,
+            i64::MAX,
+        ] {
             let mut buf = Vec::new();
             encode_signed_varint(value, &mut buf);
             let (decoded, _) = decode_signed_varint(&buf).unwrap();

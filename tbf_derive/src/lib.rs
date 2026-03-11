@@ -35,16 +35,28 @@ use syn::{parse_macro_input, DeriveInput, Data, Fields, Type, Ident};
 pub fn derive_tbf_encode(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let expanded = match &input.data {
         Data::Struct(data) => {
             match &data.fields {
                 Fields::Named(fields) => {
-                    let field_count = fields.named.len();
-                    let field_names: Vec<_> = fields.named.iter()
+                    let mut active_fields = Vec::new();
+                    for f in &fields.named {
+                        let is_skipped = f.attrs.iter().any(|attr| {
+                            attr.path().is_ident("tbf") && 
+                            attr.parse_args::<syn::Ident>().map_or(false, |ident| ident == "skip")
+                        });
+                        if !is_skipped {
+                            active_fields.push(f);
+                        }
+                    }
+
+                    let field_count = active_fields.len();
+                    let field_names: Vec<_> = active_fields.iter()
                         .map(|f| f.ident.as_ref().unwrap())
                         .collect();
-                    let field_types: Vec<_> = fields.named.iter()
+                    let field_types: Vec<_> = active_fields.iter()
                         .map(|f| &f.ty)
                         .collect();
 
@@ -60,7 +72,7 @@ pub fn derive_tbf_encode(input: TokenStream) -> TokenStream {
                         .collect();
 
                     quote! {
-                        impl TbfEncode for #name {
+                        impl #impl_generics TbfEncode for #name #ty_generics #where_clause {
                             fn tbf_encode_to(&self, buf: &mut Vec<u8>, dict: &mut tauq::tbf::StringDictionary) {
                                 #(#field_encoders)*
                             }
@@ -93,7 +105,7 @@ pub fn derive_tbf_encode(input: TokenStream) -> TokenStream {
                         });
 
                     quote! {
-                        impl TbfEncode for #name {
+                        impl #impl_generics TbfEncode for #name #ty_generics #where_clause {
                             fn tbf_encode_to(&self, buf: &mut Vec<u8>, dict: &mut tauq::tbf::StringDictionary) {
                                 #(#field_encoders)*
                             }
@@ -110,7 +122,7 @@ pub fn derive_tbf_encode(input: TokenStream) -> TokenStream {
                 }
                 Fields::Unit => {
                     quote! {
-                        impl TbfEncode for #name {
+                        impl #impl_generics TbfEncode for #name #ty_generics #where_clause {
                             fn tbf_encode_to(&self, _buf: &mut Vec<u8>, _dict: &mut tauq::tbf::StringDictionary) {
                                 // Unit struct - no data to encode
                             }
@@ -180,7 +192,7 @@ pub fn derive_tbf_encode(input: TokenStream) -> TokenStream {
             });
 
             quote! {
-                impl TbfEncode for #name {
+                impl #impl_generics TbfEncode for #name #ty_generics #where_clause {
                     fn tbf_encode_to(&self, buf: &mut Vec<u8>, dict: &mut tauq::tbf::StringDictionary) {
                         match self {
                             #(#variant_encoders)*
@@ -213,34 +225,55 @@ pub fn derive_tbf_encode(input: TokenStream) -> TokenStream {
 pub fn derive_tbf_decode(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let expanded = match &input.data {
         Data::Struct(data) => {
             match &data.fields {
                 Fields::Named(fields) => {
-                    let field_names: Vec<_> = fields.named.iter()
-                        .map(|f| f.ident.as_ref().unwrap())
-                        .collect();
-                    let field_types: Vec<_> = fields.named.iter()
-                        .map(|f| &f.ty)
-                        .collect();
+                    let mut active_field_names = Vec::new();
+                    let mut active_field_types = Vec::new();
+                    let mut all_field_names = Vec::new();
+                    let mut skipped_field_names = Vec::new();
 
-                    let field_decoders = field_names.iter().zip(field_types.iter())
+                    for f in &fields.named {
+                        let name = f.ident.as_ref().unwrap();
+                        all_field_names.push(name);
+
+                        let is_skipped = f.attrs.iter().any(|attr| {
+                            attr.path().is_ident("tbf") &&
+                            attr.parse_args::<syn::Ident>().map_or(false, |ident| ident == "skip")
+                        });
+
+                        if is_skipped {
+                            skipped_field_names.push(name);
+                        } else {
+                            active_field_names.push(name);
+                            active_field_types.push(&f.ty);
+                        }
+                    }
+
+                    let field_decoders = active_field_names.iter().zip(active_field_types.iter())
                         .map(|(name, ty)| {
                             generate_field_decoder(name, ty)
                         });
 
+                    let default_assignments = skipped_field_names.iter().map(|name| {
+                        quote! { let #name = Default::default(); }
+                    });
+
                     quote! {
-                        impl TbfDecode for #name {
+                        impl #impl_generics TbfDecode for #name #ty_generics #where_clause {
                             fn tbf_decode_from(
                                 buf: &[u8],
                                 pos: &mut usize,
                                 dict: &tauq::tbf::BorrowedDictionary
                             ) -> Result<Self, tauq::TauqError> {
                                 #(#field_decoders)*
+                                #(#default_assignments)*
 
                                 Ok(Self {
-                                    #(#field_names),*
+                                    #(#all_field_names),*
                                 })
                             }
                         }
@@ -259,7 +292,7 @@ pub fn derive_tbf_decode(input: TokenStream) -> TokenStream {
                         .map(|(name, ty)| generate_value_decoder(name, ty));
 
                     quote! {
-                        impl TbfDecode for #name {
+                        impl #impl_generics TbfDecode for #name #ty_generics #where_clause {
                             fn tbf_decode_from(
                                 buf: &[u8],
                                 pos: &mut usize,
@@ -274,7 +307,7 @@ pub fn derive_tbf_decode(input: TokenStream) -> TokenStream {
                 }
                 Fields::Unit => {
                     quote! {
-                        impl TbfDecode for #name {
+                        impl #impl_generics TbfDecode for #name #ty_generics #where_clause {
                             fn tbf_decode_from(
                                 _buf: &[u8],
                                 _pos: &mut usize,
@@ -338,7 +371,7 @@ pub fn derive_tbf_decode(input: TokenStream) -> TokenStream {
             });
 
             quote! {
-                impl TbfDecode for #name {
+                impl #impl_generics TbfDecode for #name #ty_generics #where_clause {
                     fn tbf_decode_from(
                         buf: &[u8],
                         pos: &mut usize,
@@ -457,6 +490,11 @@ fn generate_field_decoder(name: &Ident, ty: &Type) -> proc_macro2::TokenStream {
 
     match ty_str.as_str() {
         "u8" => quote! {
+            if *pos >= buf.len() {
+                return Err(tauq::TauqError::Interpret(
+                    tauq::error::InterpretError::new("Unexpected EOF")
+                ));
+            }
             let #name = buf[*pos];
             *pos += 1;
         },
@@ -481,6 +519,11 @@ fn generate_field_decoder(name: &Ident, ty: &Type) -> proc_macro2::TokenStream {
             let #name = v as usize;
         },
         "i8" => quote! {
+            if *pos >= buf.len() {
+                return Err(tauq::TauqError::Interpret(
+                    tauq::error::InterpretError::new("Unexpected EOF")
+                ));
+            }
             let #name = buf[*pos] as i8;
             *pos += 1;
         },
@@ -505,16 +548,31 @@ fn generate_field_decoder(name: &Ident, ty: &Type) -> proc_macro2::TokenStream {
             let #name = v as isize;
         },
         "f32" => quote! {
+            if *pos + 4 > buf.len() {
+                return Err(tauq::TauqError::Interpret(
+                    tauq::error::InterpretError::new("Unexpected EOF")
+                ));
+            }
             let bytes: [u8; 4] = buf[*pos..*pos + 4].try_into().unwrap();
             *pos += 4;
             let #name = f32::from_le_bytes(bytes);
         },
         "f64" => quote! {
+            if *pos + 8 > buf.len() {
+                return Err(tauq::TauqError::Interpret(
+                    tauq::error::InterpretError::new("Unexpected EOF")
+                ));
+            }
             let bytes: [u8; 8] = buf[*pos..*pos + 8].try_into().unwrap();
             *pos += 8;
             let #name = f64::from_le_bytes(bytes);
         },
         "bool" => quote! {
+            if *pos >= buf.len() {
+                return Err(tauq::TauqError::Interpret(
+                    tauq::error::InterpretError::new("Unexpected EOF")
+                ));
+            }
             let #name = buf[*pos] != 0;
             *pos += 1;
         },

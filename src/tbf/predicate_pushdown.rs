@@ -6,8 +6,8 @@
 //! - Range-based filtering (skip rows outside value range)
 //! - Cardinality-aware filtering
 
-use serde_json::Value;
 use super::stats::ColumnStats;
+use serde_json::Value;
 
 /// Comparison predicate for filtering
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -222,10 +222,7 @@ impl QueryFilter {
     }
 
     /// Estimate selectivity (0.0 to 1.0)
-    pub fn selectivity(
-        &self,
-        stats: &std::collections::HashMap<u32, ColumnStats>,
-    ) -> f64 {
+    pub fn selectivity(&self, stats: &std::collections::HashMap<u32, ColumnStats>) -> f64 {
         if self.predicates.is_empty() {
             return 1.0;
         }

@@ -17,6 +17,7 @@ pub struct TbfDeserializer<'de> {
     /// String dictionary (zero-copy references into data)
     dict: BorrowedDictionary<'de>,
     /// Format flags
+    #[allow(dead_code)]
     flags: u8,
 }
 
@@ -71,6 +72,7 @@ impl<'de> TbfDeserializer<'de> {
 
     /// Peek at next byte without consuming
     #[inline]
+    #[allow(dead_code)]
     pub(crate) fn peek(&self) -> Result<u8, TauqError> {
         if self.pos >= self.data.len() {
             return Err(TauqError::Interpret(InterpretError::new(
@@ -165,7 +167,10 @@ impl<'de> TbfDeserializer<'de> {
     pub(crate) fn read_string(&mut self) -> Result<&'de str, TauqError> {
         let idx = self.read_varint()? as u32;
         self.dict.get(idx).ok_or_else(|| {
-            TauqError::Interpret(InterpretError::new(format!("Invalid string index: {}", idx)))
+            TauqError::Interpret(InterpretError::new(format!(
+                "Invalid string index: {}",
+                idx
+            )))
         })
     }
 
@@ -324,7 +329,9 @@ impl<'a, 'de> serde::de::EnumAccess<'de> for EnumAccess<'a, 'de> {
     where
         V: serde::de::DeserializeSeed<'de>,
     {
-        let variant_de = StringDeserializer { value: self.variant };
+        let variant_de = StringDeserializer {
+            value: self.variant,
+        };
         let value = seed.deserialize(variant_de)?;
         Ok((value, self))
     }
@@ -351,10 +358,211 @@ impl<'a, 'de> serde::de::VariantAccess<'de> for EnumAccess<'a, 'de> {
         serde::Deserializer::deserialize_tuple(&mut *self.de, len, visitor)
     }
 
-    fn struct_variant<V>(self, fields: &'static [&'static str], visitor: V) -> Result<V::Value, Self::Error>
+    fn struct_variant<V>(
+        self,
+        fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
         serde::Deserializer::deserialize_struct(&mut *self.de, "", fields, visitor)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tbf::{TBF_MAGIC, TBF_VERSION};
+
+    /// Build the minimal valid 9-byte TBF buffer:
+    ///   [magic 4B][version 1B][flags 1B][reserved 2B][dict-count varint 0x00]
+    fn minimal_valid_header() -> Vec<u8> {
+        let mut buf = Vec::with_capacity(9);
+        buf.extend_from_slice(&TBF_MAGIC); // bytes 0-3: magic
+        buf.push(TBF_VERSION); // byte  4:   version
+        buf.push(0x00); // byte  5:   flags
+        buf.push(0x00); // byte  6:   reserved lo
+        buf.push(0x00); // byte  7:   reserved hi
+        buf.push(0x00); // byte  8:   dictionary count = 0 (varint)
+        buf
+    }
+
+    // -----------------------------------------------------------------------
+    // Empty slice
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_empty_slice_is_error() {
+        let result = TbfDeserializer::new(&[]);
+        assert!(result.is_err(), "empty slice must be rejected");
+        let msg = result.err().unwrap().to_string();
+        assert!(
+            msg.contains("too short") || msg.contains("short"),
+            "error should mention data length: {msg}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Too-short slice (4 bytes — has magic length but no version byte)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_four_byte_slice_is_error() {
+        // Four bytes is the magic length but the header requires at least 8.
+        let data = &TBF_MAGIC[..];
+        let result = TbfDeserializer::new(data);
+        assert!(
+            result.is_err(),
+            "4-byte slice must be rejected as too short"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Wrong magic bytes
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_wrong_magic_is_error() {
+        let mut data = minimal_valid_header();
+        // Corrupt the first magic byte.
+        data[0] = 0x00;
+        let result = TbfDeserializer::new(&data);
+        assert!(result.is_err(), "wrong magic bytes must be rejected");
+        let msg = result.err().unwrap().to_string();
+        assert!(
+            msg.to_lowercase().contains("magic"),
+            "error should mention magic bytes: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_all_zero_magic_is_error() {
+        let mut data = minimal_valid_header();
+        data[0] = 0x00;
+        data[1] = 0x00;
+        data[2] = 0x00;
+        data[3] = 0x00;
+        let result = TbfDeserializer::new(&data);
+        assert!(result.is_err(), "all-zero magic must be rejected");
+    }
+
+    // -----------------------------------------------------------------------
+    // Unsupported version (0xFF > TBF_VERSION)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_version_0xff_is_error() {
+        let mut data = minimal_valid_header();
+        data[4] = 0xFF;
+        let result = TbfDeserializer::new(&data);
+        assert!(
+            result.is_err(),
+            "version 0xFF must be rejected as unsupported"
+        );
+        let msg = result.err().unwrap().to_string();
+        assert!(
+            msg.to_lowercase().contains("version") || msg.to_lowercase().contains("unsupported"),
+            "error should mention version: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_version_just_above_current_is_error() {
+        let mut data = minimal_valid_header();
+        data[4] = TBF_VERSION + 1;
+        let result = TbfDeserializer::new(&data);
+        assert!(
+            result.is_err(),
+            "version {} must be rejected",
+            TBF_VERSION + 1
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Current version is accepted
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_current_version_is_accepted() {
+        let data = minimal_valid_header();
+        let result = TbfDeserializer::new(&data);
+        assert!(
+            result.is_ok(),
+            "current TBF_VERSION ({}) must be accepted",
+            TBF_VERSION
+        );
+    }
+
+    #[test]
+    fn test_version_zero_is_accepted() {
+        // Version 0 is <= TBF_VERSION so the check `version > TBF_VERSION`
+        // passes.
+        let mut data = minimal_valid_header();
+        data[4] = 0x00;
+        let result = TbfDeserializer::new(&data);
+        assert!(result.is_ok(), "version 0 should be accepted");
+    }
+
+    // -----------------------------------------------------------------------
+    // Valid header + empty dictionary + invalid type tag byte
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_invalid_type_tag_after_valid_header_is_error() {
+        // Build a valid 9-byte header (magic + version + flags + reserved +
+        // empty-dictionary varint), then append an invalid type tag byte.
+        // TypeTag::from_u8 only recognises 0..=23; 0xFF has no mapping.
+        let mut data = minimal_valid_header();
+        data.push(0xFF); // byte 9: invalid type tag
+
+        // Constructing the deserializer must succeed (header is valid)…
+        let mut de =
+            TbfDeserializer::new(&data).expect("header is valid; construction should succeed");
+
+        // …but reading the tag must fail.
+        let result = de.read_tag();
+        assert!(
+            result.is_err(),
+            "invalid type tag byte 0xFF must produce an error"
+        );
+        let msg = result.err().unwrap().to_string();
+        assert!(
+            msg.to_lowercase().contains("tag") || msg.to_lowercase().contains("invalid"),
+            "error should mention invalid tag: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_read_tag_on_empty_body_is_error() {
+        // A valid header with no data section at all — read_tag should return
+        // an "unexpected end of data" error rather than panicking.
+        let data = minimal_valid_header();
+        let mut de = TbfDeserializer::new(&data).expect("valid header must be accepted");
+
+        let result = de.read_tag();
+        assert!(result.is_err(), "reading a tag past end of data must fail");
+    }
+
+    // -----------------------------------------------------------------------
+    // State accessors
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_new_deserializer_position_after_header() {
+        let data = minimal_valid_header();
+        let de = TbfDeserializer::new(&data).unwrap();
+        // After the 8-byte header + 1-byte empty-dictionary varint, pos == 9.
+        assert_eq!(de.position(), 9);
+    }
+
+    #[test]
+    fn test_new_deserializer_is_empty_when_no_data_section() {
+        let data = minimal_valid_header();
+        let de = TbfDeserializer::new(&data).unwrap();
+        assert!(
+            de.is_empty(),
+            "no data section means is_empty() should be true"
+        );
     }
 }
