@@ -83,7 +83,7 @@ fn cmd_build(args: &[String]) -> Result<(), String> {
     let mut output_path: Option<PathBuf> = None;
     let mut pretty = false;
     let mut output_format: Option<OutputFormat> = None;
-    let mut safe_mode = true;  // Default to safe mode
+    let mut safe_mode = true; // Default to safe mode
     let mut unsafe_mode_explicitly_set = false;
 
     let mut i = 1;
@@ -119,7 +119,12 @@ fn cmd_build(args: &[String]) -> Result<(), String> {
                         "json" => OutputFormat::Json,
                         "tbf" | "binary" => OutputFormat::Tbf,
                         "tauq" | "tqn" => OutputFormat::Tauq,
-                        _ => return Err(format!("Unknown format: {}. Use json, tbf, or tauq", args[i + 1])),
+                        _ => {
+                            return Err(format!(
+                                "Unknown format: {}. Use json, tbf, or tauq",
+                                args[i + 1]
+                            ));
+                        }
                     });
                     i += 2;
                 } else {
@@ -144,7 +149,9 @@ fn cmd_build(args: &[String]) -> Result<(), String> {
 
     // Warn if using unsafe mode with TauqQ files
     if is_tqq && !safe_mode && unsafe_mode_explicitly_set {
-        eprintln!("\x1b[33m⚠ WARNING: Running TauqQ with --unsafe enables arbitrary shell command execution.\x1b[0m");
+        eprintln!(
+            "\x1b[33m⚠ WARNING: Running TauqQ with --unsafe enables arbitrary shell command execution.\x1b[0m"
+        );
         eprintln!("\x1b[33m  Only use --unsafe with trusted input files.\x1b[0m");
         eprintln!();
     }
@@ -187,22 +194,32 @@ fn cmd_build(args: &[String]) -> Result<(), String> {
     // Determine output format:
     // - .tqn → JSON (default), --format tbf for binary
     // - .tqq → Tauq (default), --json forces JSON, --format tbf for binary
-    let format = output_format.unwrap_or(if is_tqq { OutputFormat::Tauq } else { OutputFormat::Json });
+    let format = output_format.unwrap_or(if is_tqq {
+        OutputFormat::Tauq
+    } else {
+        OutputFormat::Json
+    });
 
     match format {
         OutputFormat::Tbf => {
             // Binary output
-            let tbf_bytes = tauq::tbf::encode_json(&json)
-                .map_err(|e| format!("TBF encoding error: {}", e))?;
+            let tbf_bytes =
+                tauq::tbf::encode_json(&json).map_err(|e| format!("TBF encoding error: {}", e))?;
 
             if let Some(path) = output_path {
                 fs::write(&path, &tbf_bytes)
                     .map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
-                eprintln!("✓ Built {} → {} (TBF, {} bytes)", input_path, path.display(), tbf_bytes.len());
+                eprintln!(
+                    "✓ Built {} → {} (TBF, {} bytes)",
+                    input_path,
+                    path.display(),
+                    tbf_bytes.len()
+                );
             } else {
                 // For binary output without file, write to stdout as raw bytes
                 use std::io::Write;
-                std::io::stdout().write_all(&tbf_bytes)
+                std::io::stdout()
+                    .write_all(&tbf_bytes)
                     .map_err(|e| format!("Failed to write to stdout: {}", e))?;
             }
         }
@@ -246,10 +263,10 @@ fn cmd_build_legacy(args: &[String]) -> Result<(), String> {
 
 #[derive(Clone, Copy, PartialEq)]
 enum FormatMode {
-    Default,      // Adaptive schemas, space-delimited, pretty
-    NoSchemas,    // No !def schemas, space-delimited, pretty
-    Optimized,    // Comma-delimited
-    Ultra,        // Comma-delimited + minified
+    Default,   // Adaptive schemas, space-delimited, pretty
+    NoSchemas, // No !def schemas, space-delimited, pretty
+    Optimized, // Comma-delimited
+    Ultra,     // Comma-delimited + minified
 }
 
 fn cmd_format(args: &[String]) -> Result<(), String> {
@@ -323,7 +340,12 @@ fn cmd_format(args: &[String]) -> Result<(), String> {
     if let Some(path) = output_path {
         fs::write(&path, &tauq_output)
             .map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
-        eprintln!("✓ Formatted {} → {} ({})", input_path, path.display(), mode_name);
+        eprintln!(
+            "✓ Formatted {} → {} ({})",
+            input_path,
+            path.display(),
+            mode_name
+        );
     } else {
         println!("{}", tauq_output);
     }
@@ -341,7 +363,7 @@ fn cmd_exec(args: &[String]) -> Result<(), String> {
     let input_path = &args[0];
     let mut output_path: Option<PathBuf> = None;
     let mut pretty = false;
-    let mut safe_mode = true;  // Default to safe mode
+    let mut safe_mode = true; // Default to safe mode
     let mut unsafe_mode_explicitly_set = false;
 
     let mut i = 1;
@@ -374,7 +396,9 @@ fn cmd_exec(args: &[String]) -> Result<(), String> {
 
     // Warn if using unsafe mode
     if !safe_mode && unsafe_mode_explicitly_set {
-        eprintln!("\x1b[33m⚠ WARNING: Running TauqQ with --unsafe enables arbitrary shell command execution.\x1b[0m");
+        eprintln!(
+            "\x1b[33m⚠ WARNING: Running TauqQ with --unsafe enables arbitrary shell command execution.\x1b[0m"
+        );
         eprintln!("\x1b[33m  Only use --unsafe with trusted input files.\x1b[0m");
         eprintln!();
     }
@@ -595,7 +619,15 @@ fn cmd_query(args: &[String]) -> Result<(), String> {
 
     let json = tauq::compile_tauq(&source).map_err(|e| e.to_string())?;
 
-    let engine = rhai::Engine::new();
+    let mut engine = rhai::Engine::new();
+    // Security: Restrict Rhai engine to prevent DoS via unbounded computation
+    engine.set_max_operations(500_000);
+    engine.set_max_call_levels(50);
+    engine.set_max_string_size(1_048_576); // 1 MB
+    engine.set_max_array_size(100_000);
+    engine.set_max_map_size(100_000);
+    engine.set_max_expr_depths(50, 25);
+    engine.disable_symbol("eval");
     let mut scope = rhai::Scope::new();
 
     let dynamic_json = rhai::serde::to_dynamic(&json).map_err(|e| e.to_string())?;
