@@ -3406,7 +3406,7 @@ checksum = "b1dd07eb858a2067e2f3c7155d54e929265c264e6f37efe3ee7a8d1b5a1dd0ba"
 
 [[package]]
 name = "tauq"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ahash 0.8.11",
  "arrow-array 57.1.0",
@@ -3424,7 +3424,6 @@ dependencies = [
  "pyo3",
  "rand 0.8.5",
  "rayon",
- "regex",
  "rhai",
  "rmp-serde",
  "serde",
