@@ -35,15 +35,13 @@
 ## Quick Example
 
 ```rust
-use tauq::tbf::{TableSchemaBuilder, FieldEncoding, TableEncode};
+use tbf_derive::{TbfEncode, TbfDecode};
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, TableEncode)]
+#[derive(Serialize, Deserialize, TbfEncode, TbfDecode)]
 struct Employee {
-    #[tauq(encoding = "u16")]
     id: u32,
     name: String,
-    #[tauq(encoding = "u8", offset = 18)]  // Age 18-273 as 0-255
     age: u32,
     salary: f64,
 }
@@ -54,8 +52,9 @@ let employees = vec![
     Employee { id: 2, name: "Bob".into(), age: 25, salary: 65000.0 },
 ];
 
-let bytes = employees.encode_tbf();
-// Result: ~40 bytes vs ~120 bytes JSON (67% smaller)
+let mut buf = Vec::new();
+let mut dict = tauq::tbf::StringDictionary::new();
+employees.tbf_encode_to(&mut buf, &mut dict);
 ```
 
 ## Compression: Two Paths
@@ -74,18 +73,20 @@ $ tauq build data.tqn --format tbf -o data.tbf
 
 ### 2. Schema-Aware Encoding (Rust API - Recommended for Best Compression)
 ```rust
-#[derive(Serialize, Deserialize, TableEncode)]
+use tbf_derive::{TbfEncode, TbfDecode};
+
+#[derive(Serialize, Deserialize, TbfEncode, TbfDecode)]
 struct User {
-    #[tauq(encoding = "u16")]
     id: u32,
-    #[tauq(encoding = "u8", offset = 18)]  // Ages 18-273 as 0-255
     age: u32,
     name: String,
 }
 
-// With type hints, achieve maximum compression
+// Generates optimized byte stream
 let users = vec![/* ... */];
-let bytes = tauq::tbf::to_bytes(&users).unwrap();
+let mut buf = Vec::new();
+let mut dict = tauq::tbf::StringDictionary::new();
+users.tbf_encode_to(&mut buf, &mut dict);
 ```
 - **Achieves**: ~83% reduction from JSON (leverages schema + columnar encoding)
 - **Pros**: Optimal compression, zero-copy deserialization, type safety

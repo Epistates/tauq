@@ -44,10 +44,36 @@ const minified = tauq.minify(`
 2 Bob
 `);
 // "!def U id name; 1 Alice; 2 Bob"
+```
 
-// Convert JS object to Tauq string
-const obj = { users: [{ id: 1, name: "Alice" }] };
-const formatted = tauq.stringify(obj);
+## Streaming Support (AI Era Integration)
+
+Tauq provides a `TauqStream` for processing data chunk-by-chunk. This is essential for LLM applications that need to process or display data as tokens arrive from the server.
+
+```javascript
+const stream = new tauq.TauqStream();
+
+// Simulate arriving chunks (e.g., from an LLM response)
+const chunk1 = '!def U name; "Al';
+const chunk2 = 'ice"; "Bo';
+const chunk3 = 'b"';
+
+console.log(stream.push(chunk1)); // []
+console.log(stream.push(chunk2)); // [{ name: "Alice" }]
+console.log(stream.push(chunk3)); // [{ name: "Bob" }]
+console.log(stream.finish());     // []
+```
+
+## Binary Format (TBF)
+
+For maximum size reduction, use the binary format:
+
+```javascript
+// Convert Tauq to TBF bytes (Uint8Array)
+const bytes = tauq.to_tbf(`!def U name; Alice; Bob`);
+
+// Convert TBF back to Tauq string
+const tauqStr = tauq.tbf_to_tauq(bytes);
 ```
 
 ## API
@@ -68,6 +94,17 @@ Convert a JavaScript value to Tauq notation.
 ### `to_json(input: string): string`
 Parse Tauq and return as JSON string.
 
+### `to_tbf(input: string): Uint8Array`
+Encode Tauq or JSON string to Tauq Binary Format.
+
+### `tbf_to_tauq(data: Uint8Array): string`
+Decode TBF bytes to Tauq notation.
+
+### `new TauqStream()`
+Class for incremental stream parsing.
+- `.push(chunk: string): any[]` - Returns array of completed objects from this chunk.
+- `.finish(): any[]` - Flushes remaining objects.
+
 ## TypeScript
 
 Type definitions are included:
@@ -75,16 +112,8 @@ Type definitions are included:
 ```typescript
 import * as tauq from 'tauq';
 
-interface User {
-  id: number;
-  name: string;
-}
-
-const users = tauq.parse(`
-!def User id name
-1 Alice
-2 Bob
-`) as User[];
+const stream = new tauq.TauqStream();
+const objects = stream.push('key val');
 ```
 
 ## Browser Usage
@@ -103,16 +132,6 @@ import init, { parse, stringify } from 'tauq';
 await init();
 const data = parse('key value');
 ```
-
-## Why Tauq?
-
-| Format | 1000 Records | Tokens | vs JSON |
-|--------|--------------|--------|---------|
-| JSON (minified) | 92 KB | 24,005 | baseline |
-| TOON | 45 KB | 12,002 | -50.0% |
-| **Tauq** | **43 KB** | **11,012** | **-54.1%** |
-
-44-54% fewer tokens = 44-54% lower API costs for LLM applications.
 
 ## License
 

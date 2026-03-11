@@ -16,7 +16,7 @@ Add the `iceberg` feature to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tauq = { version = "0.1", features = ["iceberg"] }
+tauq = { version = "0.2", features = ["iceberg"] }
 ```
 
 ## Basic Usage

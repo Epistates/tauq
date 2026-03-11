@@ -7,74 +7,48 @@ All bindings expose the same core capabilities:
 2.  **Format**: `json_str` -> `tauq_str`
 3.  **Exec**: `tqq_str` -> `json_str` (Tauq Query with scripting support)
 4.  **Minify**: `tauq_str` -> `minified_tauq_str`
+5.  **TBF (Binary)**: Full support for converting to and from the high-performance **Tauq Binary Format**.
+6.  **Streaming**: Native support for processing incomplete data streams (available in JS and Python).
 
 ---
 
 ## Supported Languages
 
 ### 🐍 Python (`bindings/python`)
-Built using [Maturin](https://github.com/PyO3/maturin).
+Built using [Maturin](https://github.com/PyO3/maturin). Features include full `TauqStream` for processing LLM token streams.
 
 **Installation:**
 ```bash
 pip install tauq
 ```
 
-**Build from source:**
-```bash
-cd bindings/python
-maturin develop
-```
-
 ### 🌐 JavaScript / WebAssembly (`bindings/js`)
-Built using [wasm-pack](https://github.com/rustwasm/wasm-pack). Works in Node.js and Browsers.
+Built using [wasm-pack](https://github.com/rustwasm/wasm-pack). Works in Node.js and Browsers. Includes `TauqStream` support.
 
 **Installation:**
 ```bash
 npm install tauq
 ```
 
-**Build from source:**
-```bash
-cd bindings/js
-wasm-pack build --target nodejs
-```
-
 ### 🐹 Go (`bindings/go`)
-Uses CGO to link against the Rust core. Idiomatic `Marshal`/`Unmarshal`.
+Uses CGO to link against the Rust core. Idiomatic `Marshal`/`Unmarshal` and TBF support.
 
 **Installation:**
 ```bash
-go get github.com/epistates/tauq
+go get github.com/epistates/tauq/bindings/go
 ```
-
-**Build Notes:**
-Requires `libtauq` (compiled via `cargo build --release`) to be available in your library path.
 
 ### ☕ Java (`bindings/java`)
-JNI bindings with zero external dependencies.
-
-**Build:**
-```bash
-cd bindings/java
-./gradlew build
-```
+JNI bindings with zero external dependencies. Supports TBF and standard parsing.
 
 ### 🔷 C# / .NET (`bindings/csharp`)
-P/Invoke wrapper for cross-platform .NET Core / Framework support.
+P/Invoke wrapper for cross-platform .NET Core 8 support. Full TBF and error reporting.
 
 ### 🐦 Swift (`bindings/swift`)
-Swift Package Manager (SPM) integration with safe C interop.
+Swift Package Manager (SPM) integration with safe C interop. Supports `Data` for TBF.
 
 ### 🦀 Rust (`src/lib.rs`)
-The native reference implementation.
-
-**Installation:**
-Add to `Cargo.toml`:
-```toml
-[dependencies]
-tauq = "0.1.0"
-```
+The native reference implementation. Use `tbf_derive` for compile-time schema generation.
 
 ---
 
@@ -89,7 +63,10 @@ For other languages, the core library exposes a stable C ABI.
 - `char* tauq_exec_query(const char* input, bool safe_mode)` - Execute TauqQ with optional safe mode
 - `char* tauq_minify(const char* input)` - Minify Tauq to single line
 - `char* json_to_tauq_c(const char* input)` - Convert JSON string to Tauq
-- `size_t tauq_get_last_error(char* buffer, size_t size)` - Get last error message
+- `unsigned char* tauq_to_tbf(const char* input, size_t* out_len)` - Encode to TBF (binary)
+- `char* tauq_tbf_to_json(const unsigned char* data, size_t len)` - Decode TBF to JSON string
+- `size_t tauq_get_last_error(char* buffer, size_t size)` - Get last error message (thread-local)
 - `void tauq_free_string(char* s)` - Free strings returned by tauq functions
+- `void tauq_free_buffer(unsigned char* ptr, size_t len)` - Free binary buffers
 
-**Note:** All functions returning `char*` return `NULL` on error. Use `tauq_get_last_error` to retrieve error details. Caller must free non-NULL results with `tauq_free_string`.
+**Note:** Functions returning pointers return `NULL` on error. Use `tauq_get_last_error` to retrieve error details.

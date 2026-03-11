@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/tauq?label=npm)](https://www.npmjs.com/package/tauq)
 [![PyPI](https://img.shields.io/pypi/v/tauq?label=pypi)](https://pypi.org/project/tauq/)
 [![Downloads](https://img.shields.io/crates/d/tauq?label=downloads)](https://crates.io/crates/tauq)
-[![Tests](https://img.shields.io/badge/tests-358_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-397_passing-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---
@@ -116,7 +116,7 @@ cargo install tauq
 **Rust:**
 ```toml
 [dependencies]
-tauq = "0.1"
+tauq = "0.2"
 ```
 
 **Python:**
@@ -310,20 +310,27 @@ tauq minify data.tqn -o data.min.tqn
 For high-performance scenarios where tokens don't matter but size and speed do:
 
 ```rust
-use tauq::tbf::{TableSchemaBuilder, FieldEncoding, TableEncode};
+use tauq::tbf::{TbfEncode, TbfDecode};
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, TableEncode)]
+#[derive(Serialize, Deserialize, TbfEncode, TbfDecode)]
 struct Employee {
-    #[tauq(encoding = "u16")]
     id: u32,
     name: String,
-    #[tauq(encoding = "u8", offset = 18)]  // Age 18-273 as 0-255
     age: u32,
 }
 
 let employees = vec![/* ... */];
-let bytes = employees.encode_tbf();  // 83% smaller than JSON
+let bytes = employees.tbf_encode();  // ~56% smaller than JSON (generic)
+```
+
+For maximum compression (up to 83%), use the schema-aware API:
+```rust
+use tauq::tbf::{TableSchema, TableEncode};
+// Manual implementation of TableEncode for columnar optimization
+impl TableEncode for Employee {
+    // ...
+}
 ```
 
 ### Apache Iceberg Integration
@@ -332,7 +339,7 @@ Enable the `iceberg` feature for data lake integration:
 
 ```toml
 [dependencies]
-tauq = { version = "0.1", features = ["iceberg"] }
+tauq = { version = "0.2", features = ["iceberg"] }
 ```
 
 ```rust
@@ -346,6 +353,20 @@ let mut writer = TbfFileWriterBuilder::new()
 writer.write(&record_batch);
 let tbf_data = writer.finish();
 ```
+
+---
+
+## Security
+
+Tauq is designed for use with untrusted input:
+
+- **Safe-by-default**: TauqQ runs in safe mode (shell execution disabled) unless explicitly opted in via `compile_tauqq_unsafe()` or `--unsafe` flag.
+- **Resource limits**: The Rhai query engine enforces operation counts, call depth, string/array/map size caps, and disables `eval`.
+- **Allocation caps**: String dictionaries, schema fields, and batch decode operations enforce maximum counts to prevent memory amplification attacks.
+- **Import limits**: Recursive `!import` directives are capped at 100 total with cycle detection.
+- **Environment isolation**: Shell execution clears inherited environment variables before injecting the safe allowlist.
+
+See the [CHANGELOG](CHANGELOG.md) for the full list of security improvements in v0.2.0.
 
 ---
 
