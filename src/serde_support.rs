@@ -14,7 +14,7 @@
 // let config: Config = tauq::from_str(tauq_source)?;
 // ```
 
-use crate::{compile_tauq, TauqError};
+use crate::{TauqError, compile_tauq};
 use serde::de::DeserializeOwned;
 use std::path::Path;
 
@@ -77,8 +77,7 @@ pub fn from_str<T: DeserializeOwned>(s: &str) -> Result<T, TauqError> {
 /// let config: Config = from_file(Path::new("config.tqn")).unwrap();
 /// ```
 pub fn from_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, TauqError> {
-    let source = std::fs::read_to_string(path.as_ref())
-        .map_err(TauqError::Io)?;
+    let source = std::fs::read_to_string(path.as_ref()).map_err(TauqError::Io)?;
     let json = compile_tauq(&source)?;
     serde_json::from_value(json).map_err(|e| {
         TauqError::Interpret(crate::error::InterpretError::new(format!(
@@ -107,7 +106,10 @@ pub fn from_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, TauqE
 /// ```
 pub fn from_bytes<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, TauqError> {
     let s = std::str::from_utf8(bytes).map_err(|e| {
-        TauqError::Interpret(crate::error::InterpretError::new(format!("Invalid UTF-8: {}", e)))
+        TauqError::Interpret(crate::error::InterpretError::new(format!(
+            "Invalid UTF-8: {}",
+            e
+        )))
     })?;
     from_str(s)
 }
@@ -119,7 +121,7 @@ mod tests {
 
     #[derive(Deserialize, Debug, PartialEq)]
     struct SimpleConfig {
-        workers: f64,  // Numbers in Tauq are f64 by default
+        workers: f64, // Numbers in Tauq are f64 by default
         timeout: f64,
     }
 
@@ -138,14 +140,14 @@ mod tests {
     #[derive(Deserialize, Debug, PartialEq)]
     struct DatabaseConfig {
         host: String,
-        port: f64,  // Numbers in Tauq are f64
+        port: f64, // Numbers in Tauq are f64
         ssl: bool,
     }
 
     #[derive(Deserialize, Debug, PartialEq)]
     struct ConfigWithArray {
         tags: Vec<String>,
-        ports: Vec<f64>,  // Numbers in Tauq are f64
+        ports: Vec<f64>, // Numbers in Tauq are f64
     }
 
     #[test]
@@ -220,6 +222,7 @@ ports [8080 8081 8082]
         let tauq = "workers 8\ntimeout 30";
 
         // Wrong type - expect string but got number
+        #[allow(dead_code)]
         #[derive(Deserialize)]
         struct WrongType {
             workers: String, // Should be f64

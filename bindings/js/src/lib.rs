@@ -73,3 +73,37 @@ pub fn tbf_to_tauq(data: &[u8]) -> Result<String, JsValue> {
     tauq::tbf::decode_to_tauq(data)
         .map_err(|e| JsValue::from_str(&format!("TBF Decode Error: {}", e)))
 }
+
+#[wasm_bindgen]
+pub struct TauqStream {
+    parser: tauq::streaming::StreamingParser,
+}
+
+#[wasm_bindgen]
+impl TauqStream {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            parser: tauq::streaming::StreamingParser::new(),
+        }
+    }
+
+    pub fn push(&mut self, chunk: &str) -> Result<js_sys::Array, JsValue> {
+        let results = js_sys::Array::new();
+        self.parser.push(chunk);
+        
+        while let Some(val) = self.parser.next_value().map_err(|e| JsValue::from_str(&format!("Stream Yield Error: {}", e)))? {
+            results.push(&serde_wasm_bindgen::to_value(&val).map_err(|e| JsValue::from_str(&format!("Serialization Error: {}", e)))?);
+        }
+        
+        Ok(results)
+    }
+
+    pub fn finish(&mut self) -> Result<js_sys::Array, JsValue> {
+        let results = js_sys::Array::new();
+        while let Some(val) = self.parser.next_value().map_err(|e| JsValue::from_str(&format!("Stream Yield Error: {}", e)))? {
+            results.push(&serde_wasm_bindgen::to_value(&val).map_err(|e| JsValue::from_str(&format!("Serialization Error: {}", e)))?);
+        }
+        Ok(results)
+    }
+}

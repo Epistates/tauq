@@ -68,6 +68,33 @@ public class Tauq {
     public static native String formatJson(String jsonSource);
 
     /**
+     * Convert Tauq or JSON string to TBF (Tauq Binary Format) bytes.
+     * 
+     * @param input The Tauq or JSON input string.
+     * @return TBF bytes.
+     * @throws IllegalArgumentException if encoding fails.
+     */
+    public static native byte[] toTbf(String input);
+
+    /**
+     * Convert TBF bytes to JSON string.
+     * 
+     * @param data The TBF bytes.
+     * @return JSON string representation.
+     * @throws IllegalArgumentException if decoding fails.
+     */
+    public static native String tbfToJson(byte[] data);
+
+    /**
+     * Convert TBF bytes to Tauq string.
+     * 
+     * @param data The TBF bytes.
+     * @return Tauq string representation.
+     * @throws IllegalArgumentException if decoding fails.
+     */
+    public static native String tbfToTauq(byte[] data);
+
+    /**
      * Convenience method to parse Tauq and return a Jackson JsonNode (if available).
      * Since we want zero-dep bindings, we stick to String.
      * Users can use their preferred JSON library (Jackson, Gson) to parse the result.

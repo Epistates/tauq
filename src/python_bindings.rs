@@ -28,7 +28,7 @@ use crate::{compile_tauq, compile_tauqq, format_to_tauq, minify_tauq_str};
 #[cfg(feature = "python-bindings")]
 use serde_json::Value as JsonValue;
 #[cfg(feature = "python-bindings")]
-use std::path::Path;
+use std::path::PathBuf;
 
 /// Convert JSON Value to Python object
 #[cfg(feature = "python-bindings")]
@@ -149,8 +149,8 @@ fn loads(py: Python<'_>, source: &str) -> PyResult<PyObject> {
 /// ```
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn load(py: Python<'_>, path: &str) -> PyResult<PyObject> {
-    let source = std::fs::read_to_string(Path::new(path))
+fn load(py: Python<'_>, path: PathBuf) -> PyResult<PyObject> {
+    let source = std::fs::read_to_string(&path)
         .map_err(|e| PyValueError::new_err(format!("File read error: {}", e)))?;
 
     let json = compile_tauq(&source)
@@ -191,7 +191,22 @@ fn load(py: Python<'_>, path: &str) -> PyResult<PyObject> {
 #[pyfunction]
 fn exec_tauqq(py: Python<'_>, source: &str) -> PyResult<PyObject> {
     let json =
-        compile_tauqq(source, false) // Default to unsafe in Python bindings for now
+        compile_tauqq(source, true) // Safe mode by default - shell execution disabled
+            .map_err(|e| PyValueError::new_err(format!("TauqQ execution error: {}", e)))?;
+
+    json_to_python(py, &json)
+}
+
+/// Execute TauqQ with shell execution enabled - **USE WITH CAUTION**
+///
+/// # Security Warning
+/// This enables arbitrary shell command execution via !emit, !run, and !pipe directives.
+/// Only use this with trusted input.
+#[cfg(feature = "python-bindings")]
+#[pyfunction]
+fn exec_tauqq_unsafe(py: Python<'_>, source: &str) -> PyResult<PyObject> {
+    let json =
+        compile_tauqq(source, false) // Shell execution enabled
             .map_err(|e| PyValueError::new_err(format!("TauqQ execution error: {}", e)))?;
 
     json_to_python(py, &json)
@@ -268,11 +283,11 @@ fn minify(source: &str) -> PyResult<String> {
 /// ```
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn dump(py: Python<'_>, obj: Bound<'_, PyAny>, path: &str) -> PyResult<()> {
+fn dump(py: Python<'_>, obj: Bound<'_, PyAny>, path: PathBuf) -> PyResult<()> {
     let json = python_to_json(py, &obj)?;
     let tauq_str = format_to_tauq(&json);
 
-    std::fs::write(path, tauq_str)
+    std::fs::write(&path, tauq_str)
         .map_err(|e| PyValueError::new_err(format!("Write error: {}", e)))?;
 
     Ok(())
@@ -324,12 +339,12 @@ fn tbf_loads(py: Python<'_>, data: &[u8]) -> PyResult<PyObject> {
 /// * `path` - Path to output file
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn tbf_dump(py: Python<'_>, obj: Bound<'_, PyAny>, path: &str) -> PyResult<()> {
+fn tbf_dump(py: Python<'_>, obj: Bound<'_, PyAny>, path: PathBuf) -> PyResult<()> {
     let json = python_to_json(py, &obj)?;
     let bytes = crate::tbf::encode_json(&json)
         .map_err(|e| PyValueError::new_err(format!("TBF encode error: {}", e)))?;
 
-    std::fs::write(path, bytes)
+    std::fs::write(&path, bytes)
         .map_err(|e| PyValueError::new_err(format!("Write error: {}", e)))?;
 
     Ok(())
@@ -344,9 +359,9 @@ fn tbf_dump(py: Python<'_>, obj: Bound<'_, PyAny>, path: &str) -> PyResult<()> {
 /// Python dict/list/value
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn tbf_load(py: Python<'_>, path: &str) -> PyResult<PyObject> {
-    let bytes = std::fs::read(path)
-        .map_err(|e| PyValueError::new_err(format!("Read error: {}", e)))?;
+fn tbf_load(py: Python<'_>, path: PathBuf) -> PyResult<PyObject> {
+    let bytes =
+        std::fs::read(&path).map_err(|e| PyValueError::new_err(format!("Read error: {}", e)))?;
 
     let json = crate::tbf::decode(&bytes)
         .map_err(|e| PyValueError::new_err(format!("TBF decode error: {}", e)))?;
@@ -368,13 +383,59 @@ fn tbf_to_tauq(data: &[u8]) -> PyResult<String> {
         .map_err(|e| PyValueError::new_err(format!("TBF decode error: {}", e)))
 }
 
+#[cfg(feature = "python-bindings")]
+#[pyclass]
+struct TauqStream {
+    parser: crate::streaming::StreamingParser,
+}
+
+#[cfg(feature = "python-bindings")]
+#[pymethods]
+impl TauqStream {
+    #[new]
+    fn new() -> Self {
+        Self {
+            parser: crate::streaming::StreamingParser::new(),
+        }
+    }
+
+    fn push(&mut self, py: Python<'_>, chunk: &str) -> PyResult<PyObject> {
+        self.parser.push(chunk);
+
+        let list = pyo3::types::PyList::empty(py);
+        while let Some(val) = self
+            .parser
+            .next_value()
+            .map_err(|e| PyValueError::new_err(format!("Stream Yield Error: {}", e)))?
+        {
+            list.append(json_to_python(py, &val)?)?;
+        }
+
+        Ok(list.unbind().into_any())
+    }
+
+    fn finish(&mut self, py: Python<'_>) -> PyResult<PyObject> {
+        let list = pyo3::types::PyList::empty(py);
+        while let Some(val) = self
+            .parser
+            .next_value()
+            .map_err(|e| PyValueError::new_err(format!("Stream Yield Error: {}", e)))?
+        {
+            list.append(json_to_python(py, &val)?)?;
+        }
+        Ok(list.unbind().into_any())
+    }
+}
+
 /// Python module definition
 #[cfg(feature = "python-bindings")]
 #[pymodule]
 fn tauq(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<TauqStream>()?;
     m.add_function(wrap_pyfunction!(loads, m)?)?;
     m.add_function(wrap_pyfunction!(load, m)?)?;
     m.add_function(wrap_pyfunction!(exec_tauqq, m)?)?;
+    m.add_function(wrap_pyfunction!(exec_tauqq_unsafe, m)?)?;
     m.add_function(wrap_pyfunction!(dumps, m)?)?;
     m.add_function(wrap_pyfunction!(minify, m)?)?;
     m.add_function(wrap_pyfunction!(dump, m)?)?;

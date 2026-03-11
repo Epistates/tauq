@@ -207,16 +207,22 @@ pub extern "system" fn Java_com_tauq_Tauq_toTbf(
         match serde_json::from_str(&input) {
             Ok(v) => v,
             Err(e) => {
-                 let _ = env.throw_new("java/lang/IllegalArgumentException", format!("JSON Parse Error: {}", e));
-                 return std::ptr::null_mut();
+                let _ = env.throw_new(
+                    "java/lang/IllegalArgumentException",
+                    format!("JSON Parse Error: {}", e),
+                );
+                return std::ptr::null_mut();
             }
         }
     } else {
         match compile_tauq(&input) {
             Ok(v) => v,
             Err(e) => {
-                 let _ = env.throw_new("java/lang/IllegalArgumentException", format!("Tauq Parse Error: {}", e));
-                 return std::ptr::null_mut();
+                let _ = env.throw_new(
+                    "java/lang/IllegalArgumentException",
+                    format!("Tauq Parse Error: {}", e),
+                );
+                return std::ptr::null_mut();
             }
         }
     };
@@ -226,14 +232,20 @@ pub extern "system" fn Java_com_tauq_Tauq_toTbf(
             let output = match env.byte_array_from_slice(&bytes) {
                 Ok(arr) => arr,
                 Err(e) => {
-                    let _ = env.throw_new("java/lang/RuntimeException", format!("JNI Array Creation Error: {}", e));
+                    let _ = env.throw_new(
+                        "java/lang/RuntimeException",
+                        format!("JNI Array Creation Error: {}", e),
+                    );
                     return std::ptr::null_mut();
                 }
             };
             output.into_raw()
-        },
+        }
         Err(e) => {
-            let _ = env.throw_new("java/lang/RuntimeException", format!("TBF Encode Error: {}", e));
+            let _ = env.throw_new(
+                "java/lang/RuntimeException",
+                format!("TBF Encode Error: {}", e),
+            );
             std::ptr::null_mut()
         }
     }
@@ -262,23 +274,56 @@ pub extern "system" fn Java_com_tauq_Tauq_tbfToJson(
     };
 
     match crate::tbf::decode(&bytes) {
-        Ok(json_val) => {
-            match serde_json::to_string(&json_val) {
-                Ok(s) => {
-                    match env.new_string(s) {
-                        Ok(js) => js.into_raw(),
-                        Err(_) => std::ptr::null_mut(),
-                    }
-                },
-                Err(e) => {
-                     let _ = env.throw_new("java/lang/RuntimeException", format!("JSON Serialize Error: {}", e));
-                     std::ptr::null_mut()
-                }
+        Ok(json_val) => match serde_json::to_string(&json_val) {
+            Ok(s) => match env.new_string(s) {
+                Ok(js) => js.into_raw(),
+                Err(_) => std::ptr::null_mut(),
+            },
+            Err(e) => {
+                let _ = env.throw_new(
+                    "java/lang/RuntimeException",
+                    format!("JSON Serialize Error: {}", e),
+                );
+                std::ptr::null_mut()
             }
         },
         Err(e) => {
-             let _ = env.throw_new("java/lang/IllegalArgumentException", format!("TBF Decode Error: {}", e));
-             std::ptr::null_mut()
+            let _ = env.throw_new(
+                "java/lang/IllegalArgumentException",
+                format!("TBF Decode Error: {}", e),
+            );
+            std::ptr::null_mut()
+        }
+    }
+}
+
+/// Class:     com_tauq_Tauq
+/// Method:    tbfToTauq
+/// Signature: ([B)Ljava/lang/String;
+#[unsafe(no_mangle)]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "system" fn Java_com_tauq_Tauq_tbfToTauq(
+    mut env: JNIEnv,
+    _class: JClass,
+    data: jni::sys::jbyteArray,
+) -> jstring {
+    let array = unsafe { jni::objects::JByteArray::from_raw(data) };
+    let bytes = match env.convert_byte_array(&array) {
+        Ok(b) => b,
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    match crate::tbf::decode_to_tauq(&bytes) {
+        Ok(tauq_str) => match env.new_string(tauq_str) {
+            Ok(js) => js.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        },
+        Err(e) => {
+            let _ = env.throw_new(
+                "java/lang/IllegalArgumentException",
+                format!("TBF Decode Error: {}", e),
+            );
+            std::ptr::null_mut()
         }
     }
 }

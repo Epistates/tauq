@@ -1,11 +1,9 @@
-#![allow(dead_code)]
 // Tauq (τq) - Token-Efficient Data Notation
 //
 // Time constant meets charge density
 // 44% fewer tokens than JSON (54% for flat data)
 // Line-by-line parsing architecture
 // Beautiful, minimal syntax
-
 #![warn(missing_docs)]
 
 //! Tauq (τq) - Token-Efficient Data Notation
@@ -27,10 +25,10 @@
 
 /// Error types for Tauq
 pub mod error;
-/// Core Tauq parser and formatter
-pub mod tauq;
 /// Serde integration (optional)
 pub mod serde_support;
+/// Core Tauq parser and formatter
+pub mod tauq;
 /// Tauq Binary Format (TBF) - high-performance columnar storage
 pub mod tbf;
 
@@ -47,10 +45,10 @@ pub mod python_bindings;
 pub mod tbf_iceberg;
 
 pub use error::TauqError;
+pub use serde_support::{from_bytes, from_file, from_str};
+pub use tauq::Delimiter;
 pub use tauq::{Formatter, Lexer, Parser, StreamingParser};
 pub use tauq::{json_to_tauq, json_to_tauq_optimized, json_to_tauq_ultra, minify_tauq};
-pub use tauq::Delimiter;
-pub use serde_support::{from_str, from_file, from_bytes};
 
 /// Maximum input size (100 MB) to prevent DoS via memory exhaustion
 pub const MAX_INPUT_SIZE: usize = 100 * 1024 * 1024;
@@ -72,7 +70,11 @@ pub fn compile_tauq(source: &str) -> Result<serde_json::Value, error::TauqError>
     // Validate input size to prevent DoS
     if source.len() > MAX_INPUT_SIZE {
         return Err(error::TauqError::Interpret(error::InterpretError::new(
-            format!("Input too large: {} bytes (max {} bytes)", source.len(), MAX_INPUT_SIZE)
+            format!(
+                "Input too large: {} bytes (max {} bytes)",
+                source.len(),
+                MAX_INPUT_SIZE
+            ),
         )));
     }
     let mut parser = tauq::Parser::new(source);
@@ -133,7 +135,11 @@ pub fn process_tauqq(source: &str, safe_mode: bool) -> Result<String, error::Tau
     // Validate input size
     if source.len() > MAX_INPUT_SIZE {
         return Err(error::TauqError::Interpret(error::InterpretError::new(
-            format!("Input too large: {} bytes (max {} bytes)", source.len(), MAX_INPUT_SIZE)
+            format!(
+                "Input too large: {} bytes (max {} bytes)",
+                source.len(),
+                MAX_INPUT_SIZE
+            ),
         )));
     }
     let mut vars = std::collections::HashMap::new();
