@@ -19,8 +19,11 @@ mod codec_selection_tests {
         }
 
         let codec = analyzer.choose_codec();
-        assert_eq!(codec, CompressionCodec::Delta,
-                   "Sorted integers should select Delta codec");
+        assert_eq!(
+            codec,
+            CompressionCodec::Delta,
+            "Sorted integers should select Delta codec"
+        );
     }
 
     /// Test delta encoding with small deltas
@@ -40,8 +43,11 @@ mod codec_selection_tests {
         }
 
         let codec = analyzer.choose_codec();
-        assert_eq!(codec, CompressionCodec::Delta,
-                   "Monotonic integers with small deltas should select Delta");
+        assert_eq!(
+            codec,
+            CompressionCodec::Delta,
+            "Monotonic integers with small deltas should select Delta"
+        );
     }
 
     /// Test dictionary encoding with repeated values
@@ -49,7 +55,7 @@ mod codec_selection_tests {
     fn test_dictionary_selection_repeated_strings() {
         let mut analyzer = CodecAnalyzer::new(100);
 
-        let cities = vec!["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"];
+        let cities = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix"];
 
         // Generate 100 samples with heavy repetition
         for i in 0..100 {
@@ -57,8 +63,11 @@ mod codec_selection_tests {
         }
 
         let codec = analyzer.choose_codec();
-        assert_eq!(codec, CompressionCodec::Dictionary,
-                   "Repeated strings should select Dictionary codec");
+        assert_eq!(
+            codec,
+            CompressionCodec::Dictionary,
+            "Repeated strings should select Dictionary codec"
+        );
     }
 
     /// Test RLE selection with boolean runs
@@ -81,8 +90,11 @@ mod codec_selection_tests {
         }
 
         let codec = analyzer.choose_codec();
-        assert_eq!(codec, CompressionCodec::RunLength,
-                   "Boolean runs should select RLE codec");
+        assert_eq!(
+            codec,
+            CompressionCodec::RunLength,
+            "Boolean runs should select RLE codec"
+        );
     }
 
     /// Test RLE with single long run
@@ -96,8 +108,11 @@ mod codec_selection_tests {
         }
 
         let codec = analyzer.choose_codec();
-        assert_eq!(codec, CompressionCodec::RunLength,
-                   "Constant values should select RLE codec");
+        assert_eq!(
+            codec,
+            CompressionCodec::RunLength,
+            "Constant values should select RLE codec"
+        );
     }
 
     /// Test raw encoding fallback for high cardinality
@@ -113,8 +128,10 @@ mod codec_selection_tests {
         let codec = analyzer.choose_codec();
         // With 100 unique values in 100 samples, should either be Dictionary (if < threshold)
         // or Raw. Since cardinality is 100%, should select Raw or Dictionary depending on threshold
-        assert!(matches!(codec, CompressionCodec::Dictionary | CompressionCodec::Raw),
-                "High cardinality should not select Delta or RLE");
+        assert!(
+            matches!(codec, CompressionCodec::Dictionary | CompressionCodec::Raw),
+            "High cardinality should not select Delta or RLE"
+        );
     }
 
     /// Test random values fallback to raw
@@ -133,8 +150,10 @@ mod codec_selection_tests {
         let codec = analyzer.choose_codec();
         // Random data should not compress well, might select Raw or Dictionary
         // depending on coincidental patterns
-        assert!(matches!(codec, CompressionCodec::Raw | CompressionCodec::Dictionary),
-                "Random data should fall back to Raw or Dictionary");
+        assert!(
+            matches!(codec, CompressionCodec::Raw | CompressionCodec::Dictionary),
+            "Random data should fall back to Raw or Dictionary"
+        );
     }
 
     /// Test timestamp sequences (real-world use case)
@@ -145,12 +164,15 @@ mod codec_selection_tests {
         let mut timestamp = 1700000000i64;
         for _ in 0..100 {
             analyzer.add_sample(Some(json!(timestamp)));
-            timestamp += 60;  // 1 minute intervals
+            timestamp += 60; // 1 minute intervals
         }
 
         let codec = analyzer.choose_codec();
-        assert_eq!(codec, CompressionCodec::Delta,
-                   "Sequential timestamps should select Delta");
+        assert_eq!(
+            codec,
+            CompressionCodec::Delta,
+            "Sequential timestamps should select Delta"
+        );
     }
 
     /// Test location codes (moderate cardinality)
@@ -158,7 +180,9 @@ mod codec_selection_tests {
     fn test_dictionary_selection_location_codes() {
         let mut analyzer = CodecAnalyzer::new(100);
 
-        let locations = vec!["NYC", "LA", "CHI", "HOU", "PHX", "PHI", "SFO", "BOS", "SEA", "DEN"];
+        let locations = vec![
+            "NYC", "LA", "CHI", "HOU", "PHX", "PHI", "SFO", "BOS", "SEA", "DEN",
+        ];
 
         // 10 unique locations in 100 samples
         for i in 0..100 {
@@ -166,8 +190,11 @@ mod codec_selection_tests {
         }
 
         let codec = analyzer.choose_codec();
-        assert_eq!(codec, CompressionCodec::Dictionary,
-                   "Low cardinality strings should select Dictionary");
+        assert_eq!(
+            codec,
+            CompressionCodec::Dictionary,
+            "Low cardinality strings should select Dictionary"
+        );
     }
 
     /// Test feature flags (RLE optimal)
@@ -177,13 +204,16 @@ mod codec_selection_tests {
 
         // Simulate feature flags being mostly on with rare off periods
         for i in 0..100 {
-            let enabled = i % 20 != 0;  // 5% disabled
+            let enabled = i % 20 != 0; // 5% disabled
             analyzer.add_sample(Some(json!(enabled)));
         }
 
         let codec = analyzer.choose_codec();
-        assert_eq!(codec, CompressionCodec::RunLength,
-                   "Feature flags with runs should select RLE");
+        assert_eq!(
+            codec,
+            CompressionCodec::RunLength,
+            "Feature flags with runs should select RLE"
+        );
     }
 
     /// Test mixed numeric types (edge case)
@@ -202,10 +232,16 @@ mod codec_selection_tests {
 
         let codec = analyzer.choose_codec();
         // Should still recognize the numeric pattern despite nulls
-        assert!(matches!(codec,
-            CompressionCodec::Raw | CompressionCodec::Delta |
-            CompressionCodec::Dictionary | CompressionCodec::RunLength),
-                "Should not fail with null values");
+        assert!(
+            matches!(
+                codec,
+                CompressionCodec::Raw
+                    | CompressionCodec::Delta
+                    | CompressionCodec::Dictionary
+                    | CompressionCodec::RunLength
+            ),
+            "Should not fail with null values"
+        );
     }
 
     /// Test accuracy of codec selection (sampling effectiveness)
@@ -217,7 +253,7 @@ mod codec_selection_tests {
 
         // Generate 10,000 values but analyze first 100 vs all
         for i in 0..10000 {
-            let value = json!(i / 100);  // Groups of 100 same values
+            let value = json!(i / 100); // Groups of 100 same values
 
             if i < 100 {
                 first_100.add_sample(Some(value.clone()));
@@ -229,8 +265,10 @@ mod codec_selection_tests {
         let codec_all = all_values.choose_codec();
 
         // Both should detect similar patterns
-        assert_eq!(codec_first, codec_all,
-                   "Sampling 100 values should match codec selection for all 10K");
+        assert_eq!(
+            codec_first, codec_all,
+            "Sampling 100 values should match codec selection for all 10K"
+        );
     }
 
     /// Test codec selection priority (RLE > Delta > Dictionary > Raw)
@@ -254,8 +292,10 @@ mod codec_selection_tests {
         let codec = analyzer.choose_codec();
         // RLE should win if runs are significant
         // This is a lower threshold for RLE so it might select RLE
-        assert!(!matches!(codec, CompressionCodec::Raw),
-                "Should select effective codec when data has patterns");
+        assert!(
+            !matches!(codec, CompressionCodec::Raw),
+            "Should select effective codec when data has patterns"
+        );
     }
 
     /// Test cardinality threshold for dictionary
@@ -276,8 +316,12 @@ mod codec_selection_tests {
             match num_unique {
                 2 | 10 | 20 => {
                     // Low cardinality should select dictionary
-                    assert_eq!(codec, CompressionCodec::Dictionary,
-                               "Cardinality {} should use Dictionary", num_unique);
+                    assert_eq!(
+                        codec,
+                        CompressionCodec::Dictionary,
+                        "Cardinality {} should use Dictionary",
+                        num_unique
+                    );
                 }
                 _ => {}
             }
@@ -289,8 +333,10 @@ mod codec_selection_tests {
             high_card.add_sample(Some(json!(format!("unique_{}", i))));
         }
         let codec = high_card.choose_codec();
-        assert!(matches!(codec, CompressionCodec::Dictionary | CompressionCodec::Raw),
-                "100% unique cardinality might use Dictionary or Raw");
+        assert!(
+            matches!(codec, CompressionCodec::Dictionary | CompressionCodec::Raw),
+            "100% unique cardinality might use Dictionary or Raw"
+        );
     }
 }
 
@@ -309,10 +355,16 @@ mod codec_edge_cases {
 
         let codec = analyzer.choose_codec();
         // Should return some valid codec, not panic
-        assert!(matches!(codec,
-            CompressionCodec::Raw | CompressionCodec::Delta |
-            CompressionCodec::Dictionary | CompressionCodec::RunLength),
-                "Should handle minimal data gracefully");
+        assert!(
+            matches!(
+                codec,
+                CompressionCodec::Raw
+                    | CompressionCodec::Delta
+                    | CompressionCodec::Dictionary
+                    | CompressionCodec::RunLength
+            ),
+            "Should handle minimal data gracefully"
+        );
     }
 
     /// Test with empty data (edge case)
@@ -322,8 +374,11 @@ mod codec_edge_cases {
 
         let codec = analyzer.choose_codec();
         // Empty should default to Raw
-        assert_eq!(codec, CompressionCodec::Raw,
-                   "Empty data should default to Raw");
+        assert_eq!(
+            codec,
+            CompressionCodec::Raw,
+            "Empty data should default to Raw"
+        );
     }
 
     /// Test with very large numbers
@@ -337,8 +392,11 @@ mod codec_edge_cases {
         }
 
         let codec = analyzer.choose_codec();
-        assert_eq!(codec, CompressionCodec::Delta,
-                   "Large monotonic numbers should still select Delta");
+        assert_eq!(
+            codec,
+            CompressionCodec::Delta,
+            "Large monotonic numbers should still select Delta"
+        );
     }
 
     /// Test with very small deltas
@@ -349,13 +407,15 @@ mod codec_edge_cases {
         let mut value = 0.0f64;
         for _ in 0..100 {
             analyzer.add_sample(Some(json!(value)));
-            value += 0.001;  // Tiny delta
+            value += 0.001; // Tiny delta
         }
 
         let codec = analyzer.choose_codec();
         // Floating point might not compress well with Delta
-        assert!(!matches!(codec, CompressionCodec::Raw),
-                "Should handle floating point data");
+        assert!(
+            !matches!(codec, CompressionCodec::Raw),
+            "Should handle floating point data"
+        );
     }
 
     /// Test with alternating values (worst case for RLE)
@@ -371,8 +431,11 @@ mod codec_edge_cases {
 
         let codec = analyzer.choose_codec();
         // Alternating should select Dictionary (cardinality = 2)
-        assert_eq!(codec, CompressionCodec::Dictionary,
-                   "Alternating values should select Dictionary");
+        assert_eq!(
+            codec,
+            CompressionCodec::Dictionary,
+            "Alternating values should select Dictionary"
+        );
     }
 
     /// Test null-heavy data
@@ -391,9 +454,15 @@ mod codec_edge_cases {
 
         let codec = analyzer.choose_codec();
         // Should return a valid codec despite many nulls
-        assert!(matches!(codec,
-            CompressionCodec::Raw | CompressionCodec::Delta |
-            CompressionCodec::Dictionary | CompressionCodec::RunLength),
-                "Should handle null-heavy data");
+        assert!(
+            matches!(
+                codec,
+                CompressionCodec::Raw
+                    | CompressionCodec::Delta
+                    | CompressionCodec::Dictionary
+                    | CompressionCodec::RunLength
+            ),
+            "Should handle null-heavy data"
+        );
     }
 }

@@ -16,11 +16,11 @@ fn test_def_implies_use() {
         assert_eq!(rows.len(), 2);
 
         let u1 = &rows[0];
-        assert_eq!(u1["id"], 1.0);
+        assert_eq!(u1["id"].as_i64(), Some(1));
         assert_eq!(u1["name"], "Alice");
 
         let u2 = &rows[1];
-        assert_eq!(u2["id"], 2.0);
+        assert_eq!(u2["id"].as_i64(), Some(2));
         assert_eq!(u2["name"], "Bob");
     } else {
         panic!("Expected array of rows, got {:?}", result);
@@ -44,11 +44,11 @@ fn test_multiple_defs_auto_switch() {
 
         // Row 1 should be type A (val)
         assert!(rows[0].as_object().unwrap().contains_key("val"));
-        assert_eq!(rows[0]["val"], 10.0);
+        assert_eq!(rows[0]["val"].as_i64(), Some(10));
 
         // Row 2 should be type B (count)
         assert!(rows[1].as_object().unwrap().contains_key("count"));
-        assert_eq!(rows[1]["count"], 20.0);
+        assert_eq!(rows[1]["count"].as_i64(), Some(20));
     } else {
         panic!("Expected array of rows, got {:?}", result);
     }
@@ -61,7 +61,7 @@ fn test_explicit_switch_back() {
     // Single object result or array? If single row, compile_tauq returns Object.
     // If input has multiple rows, Array.
     // Here "!def A a; !def B b; !use A; 10" -> 1 row.
-    assert_eq!(json["a"], 10.0);
+    assert_eq!(json["a"].as_i64(), Some(10));
     assert!(json.get("b").is_none());
 }
 
@@ -71,8 +71,8 @@ fn test_redundant_use() {
     let json = tauq::compile_tauq(input).unwrap();
     let arr = json.as_array().unwrap();
     assert_eq!(arr.len(), 2);
-    assert_eq!(arr[0]["a"], 10.0);
-    assert_eq!(arr[1]["a"], 20.0);
+    assert_eq!(arr[0]["a"].as_i64(), Some(10));
+    assert_eq!(arr[1]["a"].as_i64(), Some(20));
 }
 
 #[test]
@@ -81,9 +81,9 @@ fn test_mixed_implicit_explicit() {
     let json = tauq::compile_tauq(input).unwrap();
     let arr = json.as_array().unwrap();
     assert_eq!(arr.len(), 3);
-    assert_eq!(arr[0]["a"], 10.0);
-    assert_eq!(arr[1]["b"], 20.0);
-    assert_eq!(arr[2]["a"], 30.0);
+    assert_eq!(arr[0]["a"].as_i64(), Some(10));
+    assert_eq!(arr[1]["b"].as_i64(), Some(20));
+    assert_eq!(arr[2]["a"].as_i64(), Some(30));
 }
 
 #[test]

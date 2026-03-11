@@ -78,13 +78,13 @@ fn test_large_integers() {
     if let serde_json::Value::Object(obj) = result {
         assert!(obj["id"].is_i64());
         assert_eq!(obj["id"], 1);
-        
+
         assert!(obj["big_id"].is_i64());
         assert_eq!(obj["big_id"].as_i64(), Some(9223372036854775807));
 
         assert!(obj["ubig_id"].is_u64());
         assert_eq!(obj["ubig_id"].as_u64(), Some(18446744073709551615));
-        
+
         assert!(obj["float_val"].is_f64());
         assert_eq!(obj["float_val"], 1.5);
     } else {

@@ -9,33 +9,105 @@
 //! - Categorical data (dictionary optimal)
 //! - Boolean flags (RLE optimal for sequences)
 
-use serde_json::{json, Value};
 use rand::Rng;
+use serde_json::{Value, json};
 
 /// Top merchants (real-world distribution: 80% of volume from 20% of merchants)
 const TOP_MERCHANTS: &[&str] = &[
-    "Amazon", "Walmart", "Target", "Costco", "Best Buy",
-    "Starbucks", "McDonald's", "Chipotle", "Subway", "Whole Foods",
-    "Apple Store", "Best Buy Online", "Nordstrom", "Sephora", "Nike",
-    "H&M", "Zara", "Forever 21", "Urban Outfitters", "ASOS",
-    "Uber Eats", "DoorDash", "Airbnb", "Booking.com", "Hotels.com",
-    "Netflix", "Spotify", "Hulu", "Disney+", "Amazon Prime",
-    "Shell Gas", "Chevron Gas", "Exxon Gas", "BP Gas", "Speedway",
-    "CVS Pharmacy", "Walgreens", "Rite Aid", "Target Pharmacy", "Walmart Pharmacy",
-    "Chase Bank", "Bank of America", "Wells Fargo", "Citi", "US Bank",
-    "Trader Joe's", "Safeway", "Kroger", "Publix", "Albertsons",
-    "United Airlines", "Delta Airlines", "American Airlines", "Southwest", "JetBlue",
-    "Marriott", "Hilton", "Hyatt", "Sheraton", "Westin",
-    "Pizza Hut", "Domino's", "Papa John's", "Little Caesars", "Blaze Pizza",
-    "Gas Station 1", "Gas Station 2", "Gas Station 3", "Gas Station 4", "Gas Station 5",
+    "Amazon",
+    "Walmart",
+    "Target",
+    "Costco",
+    "Best Buy",
+    "Starbucks",
+    "McDonald's",
+    "Chipotle",
+    "Subway",
+    "Whole Foods",
+    "Apple Store",
+    "Best Buy Online",
+    "Nordstrom",
+    "Sephora",
+    "Nike",
+    "H&M",
+    "Zara",
+    "Forever 21",
+    "Urban Outfitters",
+    "ASOS",
+    "Uber Eats",
+    "DoorDash",
+    "Airbnb",
+    "Booking.com",
+    "Hotels.com",
+    "Netflix",
+    "Spotify",
+    "Hulu",
+    "Disney+",
+    "Amazon Prime",
+    "Shell Gas",
+    "Chevron Gas",
+    "Exxon Gas",
+    "BP Gas",
+    "Speedway",
+    "CVS Pharmacy",
+    "Walgreens",
+    "Rite Aid",
+    "Target Pharmacy",
+    "Walmart Pharmacy",
+    "Chase Bank",
+    "Bank of America",
+    "Wells Fargo",
+    "Citi",
+    "US Bank",
+    "Trader Joe's",
+    "Safeway",
+    "Kroger",
+    "Publix",
+    "Albertsons",
+    "United Airlines",
+    "Delta Airlines",
+    "American Airlines",
+    "Southwest",
+    "JetBlue",
+    "Marriott",
+    "Hilton",
+    "Hyatt",
+    "Sheraton",
+    "Westin",
+    "Pizza Hut",
+    "Domino's",
+    "Papa John's",
+    "Little Caesars",
+    "Blaze Pizza",
+    "Gas Station 1",
+    "Gas Station 2",
+    "Gas Station 3",
+    "Gas Station 4",
+    "Gas Station 5",
 ];
 
 /// Product categories
 const CATEGORIES: &[&str] = &[
-    "Groceries", "Restaurants", "Retail", "Utilities", "Travel",
-    "Entertainment", "Healthcare", "Fuel", "Technology", "Clothing",
-    "Home & Garden", "Sports", "Books", "Electronics", "Dining",
-    "Lodging", "Transportation", "Subscriptions", "Insurance", "Finance",
+    "Groceries",
+    "Restaurants",
+    "Retail",
+    "Utilities",
+    "Travel",
+    "Entertainment",
+    "Healthcare",
+    "Fuel",
+    "Technology",
+    "Clothing",
+    "Home & Garden",
+    "Sports",
+    "Books",
+    "Electronics",
+    "Dining",
+    "Lodging",
+    "Transportation",
+    "Subscriptions",
+    "Insurance",
+    "Finance",
 ];
 
 /// Generate realistic transaction dataset
@@ -48,7 +120,7 @@ const CATEGORIES: &[&str] = &[
 /// Vec of transaction JSON values with realistic patterns
 pub fn generate_transactions(count: usize) -> Vec<Value> {
     let mut rng = rand::thread_rng();
-    let num_unique_users = (count as f64).sqrt() as usize;  // sqrt(count) unique users
+    let num_unique_users = (count as f64).sqrt() as usize; // sqrt(count) unique users
 
     // Start from a realistic timestamp (Dec 17, 2025 00:00:00 UTC)
     let base_timestamp = 1766534400i64;
@@ -69,7 +141,7 @@ pub fn generate_transactions(count: usize) -> Vec<Value> {
             let success = rng.gen_bool(0.98);
 
             // Amounts vary by merchant
-            let amount = match merchant_idx {
+            let amount: f64 = match merchant_idx {
                 // Groceries typically smaller amounts
                 i if i < 5 => rng.gen_range(20.0..150.0),
                 // Restaurants
@@ -87,7 +159,7 @@ pub fn generate_transactions(count: usize) -> Vec<Value> {
                 "timestamp": base_timestamp + (i as i64 * 60),  // One transaction per minute
                 "user_id": user_id,
                 "merchant": merchant,
-                "amount": ((amount * 100.0) as f64).round() / 100.0,  // 2 decimal places
+                "amount": (amount * 100.0).round() / 100.0,  // 2 decimal places
                 "category": CATEGORIES[rng.gen_range(0..CATEGORIES.len())],
                 "success": success,
                 "device": if rng.gen_bool(0.6) { "mobile" } else { "web" },
@@ -98,6 +170,7 @@ pub fn generate_transactions(count: usize) -> Vec<Value> {
 }
 
 /// Generate transactions with specific characteristics
+#[allow(dead_code)]
 pub fn generate_transactions_with_seed(count: usize, seed: u64) -> Vec<Value> {
     use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -114,14 +187,14 @@ pub fn generate_transactions_with_seed(count: usize, seed: u64) -> Vec<Value> {
             };
             let merchant = TOP_MERCHANTS[merchant_idx];
             let success = rng.gen_bool(0.98);
-            let amount = rng.gen_range(10.0..500.0);
+            let amount: f64 = rng.gen_range(10.0..500.0);
 
             json!({
                 "transaction_id": i as i64 + 1000000000,
                 "timestamp": base_timestamp + (i as i64 * 60),
                 "user_id": user_id,
                 "merchant": merchant,
-                "amount": ((amount * 100.0) as f64).round() / 100.0,
+                "amount": (amount * 100.0).round() / 100.0,
                 "category": CATEGORIES[rng.gen_range(0..CATEGORIES.len())],
                 "success": success,
                 "device": if rng.gen_bool(0.6) { "mobile" } else { "web" },
@@ -153,9 +226,9 @@ mod tests {
 
             // Verify sequential properties
             if i > 0 {
-                let prev_ts = data[i-1]["timestamp"].as_i64().unwrap();
+                let prev_ts = data[i - 1]["timestamp"].as_i64().unwrap();
                 let curr_ts = tx["timestamp"].as_i64().unwrap();
-                assert_eq!(curr_ts - prev_ts, 60);  // One minute apart
+                assert_eq!(curr_ts - prev_ts, 60); // One minute apart
             }
         }
     }
@@ -170,7 +243,8 @@ mod tests {
         let mut success_count = 0;
 
         for tx in &data {
-            *merchants.entry(tx["merchant"].as_str().unwrap().to_string())
+            *merchants
+                .entry(tx["merchant"].as_str().unwrap().to_string())
                 .or_insert(0) += 1;
 
             if let Some(amount) = tx["amount"].as_f64() {
@@ -215,7 +289,7 @@ mod tests {
         for tx in &data {
             let ts = tx["timestamp"].as_i64().unwrap();
             assert!(ts > prev_ts);
-            assert_eq!(ts - prev_ts, 60);  // Constant delta = 60 seconds
+            assert_eq!(ts - prev_ts, 60); // Constant delta = 60 seconds
             prev_ts = ts;
         }
     }
@@ -225,17 +299,19 @@ mod tests {
         let data = generate_transactions(10000);
 
         // Count unique merchants and users
-        let merchants: std::collections::HashSet<_> = data.iter()
+        let merchants: std::collections::HashSet<_> = data
+            .iter()
             .map(|tx| tx["merchant"].as_str().unwrap())
             .collect();
 
-        let users: std::collections::HashSet<_> = data.iter()
+        let users: std::collections::HashSet<_> = data
+            .iter()
             .map(|tx| tx["user_id"].as_i64().unwrap())
             .collect();
 
         // Should have moderate cardinality (good for dictionary)
-        assert!(merchants.len() < 100);  // Around 70 merchants
-        assert!(users.len() > 50);  // sqrt(10000) = 100 unique users approx
+        assert!(merchants.len() < 100); // Around 70 merchants
+        assert!(users.len() > 50); // sqrt(10000) = 100 unique users approx
         assert!(users.len() < 500);
     }
 }

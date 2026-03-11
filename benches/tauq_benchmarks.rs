@@ -1,10 +1,10 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use tauq::{json_to_tauq, json_to_tauq_optimized};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use serde_json::json;
+use tauq::{json_to_tauq, json_to_tauq_optimized};
 
 /// Generate sample datasets for benchmarking
 mod datasets {
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     pub fn small_flat() -> Value {
         json!([
@@ -15,29 +15,33 @@ mod datasets {
     }
 
     pub fn medium_flat() -> Value {
-        let departments = vec!["Engineering", "Sales", "Marketing", "HR"];
-        let employees: Vec<_> = (1..=100).map(|i| {
-            json!({
-                "id": i,
-                "name": format!("Employee{}", i),
-                "email": format!("employee{}@company.com", i),
-                "department": departments[(i - 1) % 4],
-                "salary": 45000 + (i * 1000),
-                "active": i % 3 != 0
+        let departments = ["Engineering", "Sales", "Marketing", "HR"];
+        let employees: Vec<_> = (1..=100)
+            .map(|i| {
+                json!({
+                    "id": i,
+                    "name": format!("Employee{}", i),
+                    "email": format!("employee{}@company.com", i),
+                    "department": departments[(i - 1) % 4],
+                    "salary": 45000 + (i * 1000),
+                    "active": i % 3 != 0
+                })
             })
-        }).collect();
+            .collect();
         json!({"employees": employees})
     }
 
     pub fn large_flat() -> Value {
-        let records: Vec<_> = (1..=1000).map(|i| {
-            json!({
-                "id": i,
-                "timestamp": format!("2025-01-01T{:02}:00:00Z", i % 24),
-                "value": 100 + (i % 50),
-                "status": if i % 2 == 0 { "active" } else { "inactive" }
+        let records: Vec<_> = (1..=1000)
+            .map(|i| {
+                json!({
+                    "id": i,
+                    "timestamp": format!("2025-01-01T{:02}:00:00Z", i % 24),
+                    "value": 100 + (i % 50),
+                    "status": if i % 2 == 0 { "active" } else { "inactive" }
+                })
             })
-        }).collect();
+            .collect();
         json!(records)
     }
 
@@ -211,25 +215,29 @@ fn bench_format_optimized(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark round-trip performance (JSON -> Tauq -> back)
+/// Benchmark full round-trip performance (JSON -> Tauq -> JSON)
 fn bench_roundtrip(c: &mut Criterion) {
     let mut group = c.benchmark_group("roundtrip");
 
     let medium = datasets::medium_flat();
     group.bench_function("medium_flat", |b| {
         b.iter(|| {
-            let json_str = serde_json::to_string(black_box(&medium)).unwrap();
+            // Format JSON -> Tauq
             let tauq_str = json_to_tauq(black_box(&medium));
-            black_box((json_str, tauq_str));
+            // Parse Tauq -> JSON (complete roundtrip)
+            let parsed = tauq::compile_tauq(black_box(&tauq_str)).unwrap();
+            black_box(parsed);
         });
     });
 
     let nested = datasets::nested_structure();
     group.bench_function("nested_structure", |b| {
         b.iter(|| {
-            let json_str = serde_json::to_string(black_box(&nested)).unwrap();
+            // Format JSON -> Tauq
             let tauq_str = json_to_tauq(black_box(&nested));
-            black_box((json_str, tauq_str));
+            // Parse Tauq -> JSON (complete roundtrip)
+            let parsed = tauq::compile_tauq(black_box(&tauq_str)).unwrap();
+            black_box(parsed);
         });
     });
 
@@ -241,14 +249,16 @@ fn bench_scalability(c: &mut Criterion) {
     let mut group = c.benchmark_group("scalability");
 
     for size in [10, 50, 100, 500, 1000].iter() {
-        let data: Vec<_> = (1..=*size).map(|i| {
-            json!({
-                "id": i,
-                "name": format!("Item{}", i),
-                "value": i * 10,
-                "active": i % 2 == 0
+        let data: Vec<_> = (1..=*size)
+            .map(|i| {
+                json!({
+                    "id": i,
+                    "name": format!("Item{}", i),
+                    "value": i * 10,
+                    "active": i % 2 == 0
+                })
             })
-        }).collect();
+            .collect();
         let value = json!(data);
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, _| {

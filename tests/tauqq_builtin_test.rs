@@ -40,7 +40,7 @@ fn test_path_traversal_blocked() {
 
     let input = "!read \"../../etc/passwd\"";
     let mut vars = HashMap::new();
-    let result = tauqq::process_with_config(&input, &mut vars, &config);
+    let result = tauqq::process_with_config(input, &mut vars, &config);
 
     // Should fail with path traversal, resolution, or file access error
     // Note: With secure file reading, we may fail at the open step if the file doesn't exist

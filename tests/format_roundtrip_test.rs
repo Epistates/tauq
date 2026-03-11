@@ -15,13 +15,11 @@ fn normalize_json(value: &serde_json::Value) -> serde_json::Value {
         serde_json::Value::Array(arr) => {
             serde_json::Value::Array(arr.iter().map(normalize_json).collect())
         }
-        serde_json::Value::Object(obj) => {
-            serde_json::Value::Object(
-                obj.iter()
-                    .map(|(k, v)| (k.clone(), normalize_json(v)))
-                    .collect(),
-            )
-        }
+        serde_json::Value::Object(obj) => serde_json::Value::Object(
+            obj.iter()
+                .map(|(k, v)| (k.clone(), normalize_json(v)))
+                .collect(),
+        ),
         other => other.clone(),
     }
 }
@@ -343,12 +341,6 @@ fn test_tauq_format_key_value() {
     let tauq_str = format_to_tauq(&original);
 
     // Simple key-value should not use schema
-    assert!(
-        tauq_str.contains("host"),
-        "Should contain key names"
-    );
-    assert!(
-        tauq_str.contains("localhost"),
-        "Should contain values"
-    );
+    assert!(tauq_str.contains("host"), "Should contain key names");
+    assert!(tauq_str.contains("localhost"), "Should contain values");
 }

@@ -7,29 +7,65 @@
 //! - Normalized ranges 0-100 (good for compression)
 //! - Natural patterns (burst/idle cycles)
 
-use serde_json::{json, Value};
 use rand::Rng;
+use serde_json::{Value, json};
 
 /// Common series names in a metrics system
 const SERIES: &[&str] = &[
-    "cpu.us.east.server01", "cpu.us.east.server02", "cpu.us.east.server03",
-    "cpu.us.west.server01", "cpu.us.west.server02", "cpu.us.west.server03",
-    "cpu.eu.server01", "cpu.eu.server02", "cpu.eu.server03",
-    "memory.us.east.server01", "memory.us.east.server02", "memory.us.east.server03",
-    "memory.us.west.server01", "memory.us.west.server02", "memory.us.west.server03",
-    "memory.eu.server01", "memory.eu.server02", "memory.eu.server03",
-    "disk.us.east.server01", "disk.us.east.server02", "disk.us.east.server03",
-    "disk.us.west.server01", "disk.us.west.server02", "disk.us.west.server03",
-    "disk.eu.server01", "disk.eu.server02", "disk.eu.server03",
-    "network.us.east.server01", "network.us.east.server02", "network.us.east.server03",
-    "network.us.west.server01", "network.us.west.server02", "network.us.west.server03",
-    "network.eu.server01", "network.eu.server02", "network.eu.server03",
-    "latency.api", "latency.database", "latency.cache",
-    "requests.api", "requests.web", "requests.auth",
-    "errors.api", "errors.database", "errors.network",
-    "cache.hits", "cache.misses", "cache.evictions",
-    "queue.depth", "queue.latency", "queue.throughput",
-    "db.connections", "db.slow_queries", "db.locks",
+    "cpu.us.east.server01",
+    "cpu.us.east.server02",
+    "cpu.us.east.server03",
+    "cpu.us.west.server01",
+    "cpu.us.west.server02",
+    "cpu.us.west.server03",
+    "cpu.eu.server01",
+    "cpu.eu.server02",
+    "cpu.eu.server03",
+    "memory.us.east.server01",
+    "memory.us.east.server02",
+    "memory.us.east.server03",
+    "memory.us.west.server01",
+    "memory.us.west.server02",
+    "memory.us.west.server03",
+    "memory.eu.server01",
+    "memory.eu.server02",
+    "memory.eu.server03",
+    "disk.us.east.server01",
+    "disk.us.east.server02",
+    "disk.us.east.server03",
+    "disk.us.west.server01",
+    "disk.us.west.server02",
+    "disk.us.west.server03",
+    "disk.eu.server01",
+    "disk.eu.server02",
+    "disk.eu.server03",
+    "network.us.east.server01",
+    "network.us.east.server02",
+    "network.us.east.server03",
+    "network.us.west.server01",
+    "network.us.west.server02",
+    "network.us.west.server03",
+    "network.eu.server01",
+    "network.eu.server02",
+    "network.eu.server03",
+    "latency.api",
+    "latency.database",
+    "latency.cache",
+    "requests.api",
+    "requests.web",
+    "requests.auth",
+    "errors.api",
+    "errors.database",
+    "errors.network",
+    "cache.hits",
+    "cache.misses",
+    "cache.evictions",
+    "queue.depth",
+    "queue.latency",
+    "queue.throughput",
+    "db.connections",
+    "db.slow_queries",
+    "db.locks",
 ];
 
 /// Metric metadata for realistic generation
@@ -37,7 +73,7 @@ struct MetricParams {
     min: f32,
     max: f32,
     typical_value: f32,
-    volatility: f32,  // Standard deviation of changes
+    volatility: f32, // Standard deviation of changes
     burst_probability: f32,
 }
 
@@ -134,7 +170,7 @@ fn get_metric_params(series: &str) -> MetricParams {
 /// Vec of metric JSON values across all series
 pub fn generate_metrics(count_per_series: usize) -> Vec<Value> {
     let mut rng = rand::thread_rng();
-    let base_timestamp = 1766534400i64;  // Dec 17, 2025 00:00:00 UTC
+    let base_timestamp = 1766534400i64; // Dec 17, 2025 00:00:00 UTC
     let mut result = Vec::new();
 
     for series in SERIES {
@@ -151,9 +187,7 @@ pub fn generate_metrics(count_per_series: usize) -> Vec<Value> {
                 (rng.gen_range(-1.0..1.0) * params.volatility) as f32
             };
 
-            current_value = (current_value + change)
-                .max(params.min)
-                .min(params.max);
+            current_value = (current_value + change).max(params.min).min(params.max);
 
             result.push(json!({
                 "series_id": series,
@@ -170,6 +204,7 @@ pub fn generate_metrics(count_per_series: usize) -> Vec<Value> {
 }
 
 /// Generate metrics with specific seed
+#[allow(dead_code)]
 pub fn generate_metrics_with_seed(count_per_series: usize, seed: u64) -> Vec<Value> {
     use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -187,9 +222,7 @@ pub fn generate_metrics_with_seed(count_per_series: usize, seed: u64) -> Vec<Val
                 (rng.gen_range(-1.0..1.0) * params.volatility) as f32
             };
 
-            current_value = (current_value + change)
-                .max(params.min)
-                .min(params.max);
+            current_value = (current_value + change).max(params.min).min(params.max);
 
             result.push(json!({
                 "series_id": series,
@@ -231,7 +264,8 @@ mod tests {
         let data = generate_metrics(500);
 
         // Group by series
-        let mut series_data: std::collections::HashMap<String, Vec<_>> = std::collections::HashMap::new();
+        let mut series_data: std::collections::HashMap<String, Vec<_>> =
+            std::collections::HashMap::new();
         for metric in &data {
             let series_id = metric["series_id"].as_str().unwrap().to_string();
             series_data.entry(series_id).or_default().push(metric);
@@ -258,7 +292,7 @@ mod tests {
             let params = get_metric_params(series_id);
 
             // Values should stay within bounds
-            assert!(value >= params.min - 1.0);  // Allow small margin for float precision
+            assert!(value >= params.min - 1.0); // Allow small margin for float precision
             assert!(value <= params.max + 1.0);
         }
     }
@@ -268,17 +302,17 @@ mod tests {
         let data = generate_metrics(1000);
 
         // Count unique series and hosts
-        let series: std::collections::HashSet<_> = data.iter()
+        let series: std::collections::HashSet<_> = data
+            .iter()
             .map(|m| m["series_id"].as_str().unwrap())
             .collect();
 
-        let hosts: std::collections::HashSet<_> = data.iter()
-            .map(|m| m["host"].as_str().unwrap())
-            .collect();
+        let hosts: std::collections::HashSet<_> =
+            data.iter().map(|m| m["host"].as_str().unwrap()).collect();
 
         // Should have expected cardinality
         assert_eq!(series.len(), SERIES.len());
-        assert_eq!(hosts.len(), 3);  // 3 regions
+        assert_eq!(hosts.len(), 3); // 3 regions
     }
 
     #[test]
@@ -286,7 +320,8 @@ mod tests {
         let data = generate_metrics(100);
 
         // Group by series to test each separately
-        let mut series_data: std::collections::HashMap<String, Vec<f32>> = std::collections::HashMap::new();
+        let mut series_data: std::collections::HashMap<String, Vec<f32>> =
+            std::collections::HashMap::new();
         for metric in &data {
             let series_id = metric["series_id"].as_str().unwrap().to_string();
             let value = metric["value"].as_f64().unwrap() as f32;
@@ -297,7 +332,7 @@ mod tests {
         for (_, values) in series_data {
             let mut deltas = Vec::new();
             for i in 1..values.len() {
-                deltas.push((values[i] - values[i-1]).abs());
+                deltas.push((values[i] - values[i - 1]).abs());
             }
 
             // Most deltas should be small (< 10% of typical value)
@@ -311,7 +346,8 @@ mod tests {
         let data = generate_metrics(10000);
 
         // Count unique series (should be small)
-        let series: std::collections::HashSet<_> = data.iter()
+        let series: std::collections::HashSet<_> = data
+            .iter()
             .map(|m| m["series_id"].as_str().unwrap())
             .collect();
 
@@ -321,7 +357,8 @@ mod tests {
         // Count occurrences - should be balanced across series
         let mut counts = std::collections::HashMap::new();
         for metric in &data {
-            *counts.entry(metric["series_id"].as_str().unwrap().to_string())
+            *counts
+                .entry(metric["series_id"].as_str().unwrap().to_string())
                 .or_insert(0) += 1;
         }
 

@@ -9,41 +9,129 @@
 //! - Variable message lengths (raw or RLE)
 //! - Duration metrics (delta optimal for patterns)
 
-use serde_json::{json, Value};
 use rand::Rng;
+use serde_json::{Value, json};
 
 /// Common hostnames in a data center
 const HOSTNAMES: &[&str] = &[
-    "web-server-01", "web-server-02", "web-server-03", "web-server-04", "web-server-05",
-    "api-server-01", "api-server-02", "api-server-03", "database-01", "database-02",
-    "cache-01", "cache-02", "load-balancer-01", "load-balancer-02", "search-01",
-    "message-queue-01", "message-queue-02", "scheduler-01", "worker-01", "worker-02",
-    "worker-03", "worker-04", "worker-05", "backup-01", "monitoring-01",
-    "auth-server-01", "auth-server-02", "api-gateway-01", "cdn-01", "cdn-02",
-    "storage-01", "storage-02", "config-server-01", "logging-01", "metrics-01",
-    "web-cache-01", "web-cache-02", "session-store-01", "session-store-02", "redis-01",
-    "postgres-01", "postgres-02", "mongo-01", "elastic-01", "rabbit-01",
-    "router-01", "switch-01", "firewall-01", "vpn-01", "dns-01",
+    "web-server-01",
+    "web-server-02",
+    "web-server-03",
+    "web-server-04",
+    "web-server-05",
+    "api-server-01",
+    "api-server-02",
+    "api-server-03",
+    "database-01",
+    "database-02",
+    "cache-01",
+    "cache-02",
+    "load-balancer-01",
+    "load-balancer-02",
+    "search-01",
+    "message-queue-01",
+    "message-queue-02",
+    "scheduler-01",
+    "worker-01",
+    "worker-02",
+    "worker-03",
+    "worker-04",
+    "worker-05",
+    "backup-01",
+    "monitoring-01",
+    "auth-server-01",
+    "auth-server-02",
+    "api-gateway-01",
+    "cdn-01",
+    "cdn-02",
+    "storage-01",
+    "storage-02",
+    "config-server-01",
+    "logging-01",
+    "metrics-01",
+    "web-cache-01",
+    "web-cache-02",
+    "session-store-01",
+    "session-store-02",
+    "redis-01",
+    "postgres-01",
+    "postgres-02",
+    "mongo-01",
+    "elastic-01",
+    "rabbit-01",
+    "router-01",
+    "switch-01",
+    "firewall-01",
+    "vpn-01",
+    "dns-01",
 ];
 
 /// Service names
 const SERVICES: &[&str] = &[
-    "api", "web", "auth", "database", "cache",
-    "scheduler", "worker", "notification", "analytics", "search",
-    "storage", "monitoring", "logging", "config", "messaging",
-    "billing", "payment", "inventory", "order", "user",
-    "product", "recommendation", "recommendation-engine", "ml-service", "recommendation-api",
-    "report-service", "export-service", "import-service", "sync-service", "cleanup-service",
+    "api",
+    "web",
+    "auth",
+    "database",
+    "cache",
+    "scheduler",
+    "worker",
+    "notification",
+    "analytics",
+    "search",
+    "storage",
+    "monitoring",
+    "logging",
+    "config",
+    "messaging",
+    "billing",
+    "payment",
+    "inventory",
+    "order",
+    "user",
+    "product",
+    "recommendation",
+    "recommendation-engine",
+    "ml-service",
+    "recommendation-api",
+    "report-service",
+    "export-service",
+    "import-service",
+    "sync-service",
+    "cleanup-service",
 ];
 
 /// Event types
 const EVENT_TYPES: &[&str] = &[
-    "started", "stopped", "error", "warning", "info",
-    "debug", "request", "response", "timeout", "retry",
-    "failed", "success", "connected", "disconnected", "heartbeat",
-    "metrics", "alert", "escalation", "resolved", "pending",
-    "queued", "processing", "completed", "abandoned", "rollback",
-    "deployed", "rolled_back", "scaled_up", "scaled_down", "restarted",
+    "started",
+    "stopped",
+    "error",
+    "warning",
+    "info",
+    "debug",
+    "request",
+    "response",
+    "timeout",
+    "retry",
+    "failed",
+    "success",
+    "connected",
+    "disconnected",
+    "heartbeat",
+    "metrics",
+    "alert",
+    "escalation",
+    "resolved",
+    "pending",
+    "queued",
+    "processing",
+    "completed",
+    "abandoned",
+    "rollback",
+    "deployed",
+    "rolled_back",
+    "scaled_up",
+    "scaled_down",
+    "restarted",
 ];
 
 /// Severity levels
@@ -77,7 +165,7 @@ impl Severity {
 /// Vec of log entry JSON values with realistic patterns
 pub fn generate_event_logs(count: usize) -> Vec<Value> {
     let mut rng = rand::thread_rng();
-    let base_timestamp = 1766534400i64;  // Dec 17, 2025 00:00:00 UTC
+    let base_timestamp = 1766534400i64; // Dec 17, 2025 00:00:00 UTC
 
     (0..count)
         .map(|i| {
@@ -108,26 +196,41 @@ pub fn generate_event_logs(count: usize) -> Vec<Value> {
             // Message varies by severity
             let message = match severity {
                 Severity::Critical => {
-                    format!("CRITICAL: {} service on {} failed with error code {}",
-                            SERVICES[service_idx], HOSTNAMES[hostname_idx],
-                            rng.gen_range(500..599))
+                    format!(
+                        "CRITICAL: {} service on {} failed with error code {}",
+                        SERVICES[service_idx],
+                        HOSTNAMES[hostname_idx],
+                        rng.gen_range(500..599)
+                    )
                 }
                 Severity::Error => {
-                    format!("Error processing request: {} ({}ms timeout)",
-                            ["Connection timeout", "Database unavailable", "Parse error"][rng.gen_range(0..3)],
-                            duration_ms)
+                    format!(
+                        "Error processing request: {} ({}ms timeout)",
+                        ["Connection timeout", "Database unavailable", "Parse error"]
+                            [rng.gen_range(0..3)],
+                        duration_ms
+                    )
                 }
                 Severity::Warning => {
-                    format!("High latency detected: {}ms for {}", duration_ms, EVENT_TYPES[event_type_idx])
+                    format!(
+                        "High latency detected: {}ms for {}",
+                        duration_ms, EVENT_TYPES[event_type_idx]
+                    )
                 }
                 Severity::Info => {
-                    format!("{} {} on {} ({}ms)",
-                            EVENT_TYPES[event_type_idx], SERVICES[service_idx],
-                            HOSTNAMES[hostname_idx], duration_ms)
+                    format!(
+                        "{} {} on {} ({}ms)",
+                        EVENT_TYPES[event_type_idx],
+                        SERVICES[service_idx],
+                        HOSTNAMES[hostname_idx],
+                        duration_ms
+                    )
                 }
                 Severity::Debug => {
-                    format!("Debug: {} execution trace for {}",
-                            SERVICES[service_idx], HOSTNAMES[hostname_idx])
+                    format!(
+                        "Debug: {} execution trace for {}",
+                        SERVICES[service_idx], HOSTNAMES[hostname_idx]
+                    )
                 }
             };
 
@@ -152,6 +255,7 @@ pub fn generate_event_logs(count: usize) -> Vec<Value> {
 }
 
 /// Generate logs with specific seed
+#[allow(dead_code)]
 pub fn generate_event_logs_with_seed(count: usize, seed: u64) -> Vec<Value> {
     use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
@@ -241,22 +345,25 @@ mod tests {
         let data = generate_event_logs(10000);
 
         // Count unique values
-        let hostnames: std::collections::HashSet<_> = data.iter()
+        let hostnames: std::collections::HashSet<_> = data
+            .iter()
             .map(|l| l["hostname"].as_str().unwrap())
             .collect();
 
-        let services: std::collections::HashSet<_> = data.iter()
+        let services: std::collections::HashSet<_> = data
+            .iter()
             .map(|l| l["service"].as_str().unwrap())
             .collect();
 
-        let severities: std::collections::HashSet<_> = data.iter()
+        let severities: std::collections::HashSet<_> = data
+            .iter()
             .map(|l| l["severity"].as_str().unwrap())
             .collect();
 
         // Cardinality good for dictionary encoding
         assert_eq!(hostnames.len(), HOSTNAMES.len());
         assert_eq!(services.len(), SERVICES.len());
-        assert_eq!(severities.len(), 5);  // 5 severity levels
+        assert_eq!(severities.len(), 5); // 5 severity levels
     }
 
     #[test]
@@ -265,13 +372,14 @@ mod tests {
 
         let mut severity_counts = std::collections::HashMap::new();
         for log in &data {
-            *severity_counts.entry(log["severity"].as_str().unwrap().to_string())
+            *severity_counts
+                .entry(log["severity"].as_str().unwrap().to_string())
                 .or_insert(0) += 1;
         }
 
         // Debug/Info should dominate (> 50%)
         let info_debug_count = severity_counts.get("INFO").copied().unwrap_or(0)
-                             + severity_counts.get("DEBUG").copied().unwrap_or(0);
+            + severity_counts.get("DEBUG").copied().unwrap_or(0);
         assert!(info_debug_count as f64 / data.len() as f64 > 0.5);
 
         // Critical should be rare (< 0.2%)

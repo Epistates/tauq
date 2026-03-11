@@ -17,7 +17,7 @@ fn test_generic_object() {
     if let Value::Object(obj) = result {
         let config = obj["config"].as_object().expect("config should be object");
         assert_eq!(config["host"], "localhost");
-        assert_eq!(config["port"], 8080.0);
+        assert_eq!(config["port"].as_i64(), Some(8080));
         assert_eq!(config["enabled"], true);
     } else {
         panic!("Expected object, got {:?}", result);
@@ -44,6 +44,6 @@ fn test_nested_generic_object() {
 
     assert_eq!(log["msg"], "Error");
     let meta = log["metadata"].as_object().expect("metadata is object");
-    assert_eq!(meta["code"], 500.0);
+    assert_eq!(meta["code"].as_i64(), Some(500));
     assert_eq!(meta["details"], "server error");
 }

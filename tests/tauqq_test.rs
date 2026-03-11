@@ -9,7 +9,11 @@ fn test_tauqq_emit_valid_output() {
     let input = r#"!emit echo "name Alice""#;
     let mut vars = HashMap::new();
     let result = tauqq::process(input, &mut vars, false);
-    assert!(result.is_ok(), "Valid Tauq output should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Valid Tauq output should pass: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -18,7 +22,11 @@ fn test_tauqq_emit_json_is_valid() {
     let input = r#"!emit echo '{"name": "Alice"}'"#;
     let mut vars = HashMap::new();
     let result = tauqq::process(input, &mut vars, false);
-    assert!(result.is_ok(), "JSON output should be valid (Tauq is a JSON superset): {:?}", result);
+    assert!(
+        result.is_ok(),
+        "JSON output should be valid (Tauq is a JSON superset): {:?}",
+        result
+    );
 }
 
 #[test]
@@ -30,7 +38,11 @@ echo "name Alice"
 }"#;
     let mut vars = HashMap::new();
     let result = tauqq::process(input, &mut vars, false);
-    assert!(result.is_ok(), "Valid Tauq output should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Valid Tauq output should pass: {:?}",
+        result
+    );
     let output = result.unwrap();
     assert!(output.contains("count 42"));
     assert!(output.contains("name Alice"));
@@ -45,7 +57,11 @@ print(json.dumps({"name": "Alice", "age": 30}))
 }"#;
     let mut vars = HashMap::new();
     let result = tauqq::process(input, &mut vars, false);
-    assert!(result.is_ok(), "JSON output should be valid (Tauq is a JSON superset): {:?}", result);
+    assert!(
+        result.is_ok(),
+        "JSON output should be valid (Tauq is a JSON superset): {:?}",
+        result
+    );
 }
 
 #[test]
@@ -91,7 +107,11 @@ age 30
 !pipe grep name"#;
     let mut vars = HashMap::new();
     let result = tauqq::process(input, &mut vars, false);
-    assert!(result.is_ok(), "Valid piped output should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Valid piped output should pass: {:?}",
+        result
+    );
 }
 
 // ==================== Original Tests ====================

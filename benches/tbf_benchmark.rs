@@ -4,23 +4,29 @@
 //!
 //! Run with: cargo bench --bench tbf_benchmark
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use tauq::tbf::{TbfEncode, TbfDecode, StringDictionary, BorrowedDictionary};
-use tauq::tbf::{encode_varint, decode_varint};
-use tauq::tbf::{ColumnarEncode, ColumnarDecode, ColumnarEncoder, ColumnReader, ColumnType};
-use tauq::tbf::{FastEncode, FastBuffer, FastStringDictionary, fast_encode_slice};
-use tauq::tbf::{FastDecode, FastBorrowedDictionary, fast_decode_varint};
-use tauq::tbf::{UltraEncode, UltraEncodeDirect, ColumnCollectors, UltraColumnType,
-                UltraBuffer, DirectU32Encoder, DirectStringEncoder, encode_varint_to_ultra,
-                ULTRA_MAGIC, ULTRA_VERSION};
-use tauq::tbf::{
-    // Type-based schema API
-    FieldEncoding, TableSchema, TableEncode, AdaptiveIntEncoder, AdaptiveStringEncoder,
-    encode_varint_fast, SCHEMA_MAGIC,
-};
 use tauq::TauqError;
+use tauq::tbf::{
+    AdaptiveIntEncoder,
+    AdaptiveStringEncoder,
+    // Type-based schema API
+    FieldEncoding,
+    SCHEMA_MAGIC,
+    TableEncode,
+    TableSchema,
+    encode_varint_fast,
+};
+use tauq::tbf::{BorrowedDictionary, StringDictionary, TbfDecode, TbfEncode};
+use tauq::tbf::{
+    ColumnCollectors, DirectStringEncoder, DirectU32Encoder, ULTRA_MAGIC, ULTRA_VERSION,
+    UltraBuffer, UltraColumnType, UltraEncode, UltraEncodeDirect, encode_varint_to_ultra,
+};
+use tauq::tbf::{ColumnReader, ColumnType, ColumnarDecode, ColumnarEncode, ColumnarEncoder};
+use tauq::tbf::{FastBorrowedDictionary, FastDecode, fast_decode_varint};
+use tauq::tbf::{FastBuffer, FastEncode, FastStringDictionary, fast_encode_slice};
+use tauq::tbf::{decode_varint, encode_varint};
 
 // ============================================================================
 // Test Data
@@ -66,7 +72,8 @@ impl TbfDecode for Employee {
 
         let (name_idx, len) = decode_varint(&buf[*pos..])?;
         *pos += len;
-        let name = dict.get(name_idx as u32)
+        let name = dict
+            .get(name_idx as u32)
             .ok_or_else(|| tauq::error::InterpretError::new("Invalid string index"))?
             .to_string();
 
@@ -75,13 +82,15 @@ impl TbfDecode for Employee {
 
         let (city_idx, len) = decode_varint(&buf[*pos..])?;
         *pos += len;
-        let city = dict.get(city_idx as u32)
+        let city = dict
+            .get(city_idx as u32)
             .ok_or_else(|| tauq::error::InterpretError::new("Invalid string index"))?
             .to_string();
 
         let (dept_idx, len) = decode_varint(&buf[*pos..])?;
         *pos += len;
-        let department = dict.get(dept_idx as u32)
+        let department = dict
+            .get(dept_idx as u32)
             .ok_or_else(|| tauq::error::InterpretError::new("Invalid string index"))?
             .to_string();
 
@@ -169,7 +178,10 @@ impl FastEncode for Employee {
 
 // Fast decoding implementation for Employee (optimized)
 impl FastDecode for Employee {
-    fn fast_decode_from(bytes: &[u8], dict: &FastBorrowedDictionary) -> Result<(Self, usize), TauqError> {
+    fn fast_decode_from(
+        bytes: &[u8],
+        dict: &FastBorrowedDictionary,
+    ) -> Result<(Self, usize), TauqError> {
         let mut pos = 0;
 
         let (id, len) = fast_decode_varint(&bytes[pos..])?;
@@ -177,7 +189,8 @@ impl FastDecode for Employee {
 
         let (name_idx, len) = fast_decode_varint(&bytes[pos..])?;
         pos += len;
-        let name = dict.get(name_idx as u32)
+        let name = dict
+            .get(name_idx as u32)
             .ok_or_else(|| tauq::error::InterpretError::new("Invalid string index"))?
             .to_string();
 
@@ -186,13 +199,15 @@ impl FastDecode for Employee {
 
         let (city_idx, len) = fast_decode_varint(&bytes[pos..])?;
         pos += len;
-        let city = dict.get(city_idx as u32)
+        let city = dict
+            .get(city_idx as u32)
             .ok_or_else(|| tauq::error::InterpretError::new("Invalid string index"))?
             .to_string();
 
         let (dept_idx, len) = fast_decode_varint(&bytes[pos..])?;
         pos += len;
-        let department = dict.get(dept_idx as u32)
+        let department = dict
+            .get(dept_idx as u32)
             .ok_or_else(|| tauq::error::InterpretError::new("Invalid string index"))?
             .to_string();
 
@@ -205,16 +220,19 @@ impl FastDecode for Employee {
         let (project_count, len) = fast_decode_varint(&bytes[pos..])?;
         pos += len;
 
-        Ok((Employee {
-            id: id as u32,
-            name,
-            age: age as u32,
-            city,
-            department,
-            salary: salary as u32,
-            experience: experience as u32,
-            project_count: project_count as u32,
-        }, pos))
+        Ok((
+            Employee {
+                id: id as u32,
+                name,
+                age: age as u32,
+                city,
+                department,
+                salary: salary as u32,
+                experience: experience as u32,
+                project_count: project_count as u32,
+            },
+            pos,
+        ))
     }
 }
 
@@ -227,14 +245,14 @@ impl UltraEncode for Employee {
     fn collect_columns(items: &[Self], collectors: &mut ColumnCollectors) {
         // Initialize columns with correct types
         let capacity = items.len();
-        collectors.init_column(0, UltraColumnType::U32, capacity);  // id
+        collectors.init_column(0, UltraColumnType::U32, capacity); // id
         collectors.init_column(1, UltraColumnType::String, capacity); // name
-        collectors.init_column(2, UltraColumnType::U32, capacity);  // age
+        collectors.init_column(2, UltraColumnType::U32, capacity); // age
         collectors.init_column(3, UltraColumnType::String, capacity); // city
         collectors.init_column(4, UltraColumnType::String, capacity); // department
-        collectors.init_column(5, UltraColumnType::U32, capacity);  // salary
-        collectors.init_column(6, UltraColumnType::U32, capacity);  // experience
-        collectors.init_column(7, UltraColumnType::U32, capacity);  // project_count
+        collectors.init_column(5, UltraColumnType::U32, capacity); // salary
+        collectors.init_column(6, UltraColumnType::U32, capacity); // experience
+        collectors.init_column(7, UltraColumnType::U32, capacity); // project_count
 
         // Collect all values column by column
         for emp in items {
@@ -320,14 +338,14 @@ impl TableEncode for Employee {
     fn schema() -> TableSchema {
         // Clean API with optimal compression using offsets where beneficial
         TableSchema::builder()
-            .u16("id")                      // IDs 0-65535 fit in u16
-            .string("name")                 // inline string (high cardinality)
-            .u8_offset("age", 18)           // ages 18-273 stored as 0-255
-            .dict("city")                   // dictionary string (low cardinality)
-            .dict("department")             // dictionary string (low cardinality)
-            .u32_offset("salary", 30_000)   // salaries 30k+ with offset
-            .u8("experience")               // 0-255 years
-            .u8("project_count")            // 0-255 projects
+            .u16("id") // IDs 0-65535 fit in u16
+            .string("name") // inline string (high cardinality)
+            .u8_offset("age", 18) // ages 18-273 stored as 0-255
+            .dict("city") // dictionary string (low cardinality)
+            .dict("department") // dictionary string (low cardinality)
+            .u32_offset("salary", 30_000) // salaries 30k+ with offset
+            .u8("experience") // 0-255 years
+            .u8("project_count") // 0-255 projects
             .build()
     }
 
@@ -344,14 +362,22 @@ impl TableEncode for Employee {
         let schema = Self::schema();
 
         // Create adaptive encoders from schema
-        let mut id_enc = AdaptiveIntEncoder::new(schema.encoding(0).unwrap_or(FieldEncoding::Auto), n);
-        let mut name_enc = AdaptiveStringEncoder::new(schema.encoding(1).unwrap_or(FieldEncoding::Inline), n);
-        let mut age_enc = AdaptiveIntEncoder::new(schema.encoding(2).unwrap_or(FieldEncoding::Auto), n);
-        let mut city_enc = AdaptiveStringEncoder::new(schema.encoding(3).unwrap_or(FieldEncoding::Dictionary), n);
-        let mut dept_enc = AdaptiveStringEncoder::new(schema.encoding(4).unwrap_or(FieldEncoding::Dictionary), n);
-        let mut salary_enc = AdaptiveIntEncoder::new(schema.encoding(5).unwrap_or(FieldEncoding::Auto), n);
-        let mut exp_enc = AdaptiveIntEncoder::new(schema.encoding(6).unwrap_or(FieldEncoding::Auto), n);
-        let mut proj_enc = AdaptiveIntEncoder::new(schema.encoding(7).unwrap_or(FieldEncoding::Auto), n);
+        let mut id_enc =
+            AdaptiveIntEncoder::new(schema.encoding(0).unwrap_or(FieldEncoding::Auto), n);
+        let mut name_enc =
+            AdaptiveStringEncoder::new(schema.encoding(1).unwrap_or(FieldEncoding::Inline), n);
+        let mut age_enc =
+            AdaptiveIntEncoder::new(schema.encoding(2).unwrap_or(FieldEncoding::Auto), n);
+        let mut city_enc =
+            AdaptiveStringEncoder::new(schema.encoding(3).unwrap_or(FieldEncoding::Dictionary), n);
+        let mut dept_enc =
+            AdaptiveStringEncoder::new(schema.encoding(4).unwrap_or(FieldEncoding::Dictionary), n);
+        let mut salary_enc =
+            AdaptiveIntEncoder::new(schema.encoding(5).unwrap_or(FieldEncoding::Auto), n);
+        let mut exp_enc =
+            AdaptiveIntEncoder::new(schema.encoding(6).unwrap_or(FieldEncoding::Auto), n);
+        let mut proj_enc =
+            AdaptiveIntEncoder::new(schema.encoding(7).unwrap_or(FieldEncoding::Auto), n);
 
         // Single pass through data
         for emp in items {
@@ -394,16 +420,32 @@ fn generate_employees(count: usize, seed: u64) -> Vec<Employee> {
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
     let first_names = [
-        "Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank",
-        "Ivy", "Jack", "Kate", "Liam", "Maya", "Noah", "Olivia", "Pete",
+        "Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank", "Ivy", "Jack", "Kate",
+        "Liam", "Maya", "Noah", "Olivia", "Pete",
     ];
     let cities = [
-        "NYC", "LA", "Chicago", "Houston", "Phoenix", "Philadelphia",
-        "Seattle", "Denver", "Boston", "Austin",
+        "NYC",
+        "LA",
+        "Chicago",
+        "Houston",
+        "Phoenix",
+        "Philadelphia",
+        "Seattle",
+        "Denver",
+        "Boston",
+        "Austin",
     ];
     let departments = [
-        "Engineering", "Sales", "Marketing", "HR", "Finance",
-        "Operations", "Support", "Legal", "Product", "Design",
+        "Engineering",
+        "Sales",
+        "Marketing",
+        "HR",
+        "Finance",
+        "Operations",
+        "Support",
+        "Legal",
+        "Product",
+        "Design",
     ];
 
     (0..count)
@@ -438,14 +480,18 @@ fn bench_tbf(c: &mut Criterion) {
         group.throughput(Throughput::Elements(size as u64));
 
         // Direct serde serialization (fast path)
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| tauq::tbf::to_bytes(black_box(data)).unwrap())
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| tauq::tbf::to_bytes(black_box(data)).unwrap()),
+        );
 
         // Direct serde deserialization (fast path)
-        group.bench_with_input(BenchmarkId::new("deserialize", size), &tbf_bytes, |b, data| {
-            b.iter(|| tauq::tbf::from_bytes::<Vec<Employee>>(black_box(data)).unwrap())
-        });
+        group.bench_with_input(
+            BenchmarkId::new("deserialize", size),
+            &tbf_bytes,
+            |b, data| b.iter(|| tauq::tbf::from_bytes::<Vec<Employee>>(black_box(data)).unwrap()),
+        );
     }
 
     group.finish();
@@ -465,14 +511,18 @@ fn bench_tbf_traits(c: &mut Criterion) {
         group.throughput(Throughput::Elements(size as u64));
 
         // Traits-based serialization (no type tags)
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| TbfEncode::tbf_encode_slice(black_box(data)))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| TbfEncode::tbf_encode_slice(black_box(data))),
+        );
 
         // Traits-based deserialization (no type tags)
-        group.bench_with_input(BenchmarkId::new("deserialize", size), &tbf_bytes, |b, data| {
-            b.iter(|| Employee::tbf_decode_slice(black_box(data)).unwrap())
-        });
+        group.bench_with_input(
+            BenchmarkId::new("deserialize", size),
+            &tbf_bytes,
+            |b, data| b.iter(|| Employee::tbf_decode_slice(black_box(data)).unwrap()),
+        );
     }
 
     group.finish();
@@ -492,14 +542,18 @@ fn bench_tbf_columnar(c: &mut Criterion) {
         group.throughput(Throughput::Elements(size as u64));
 
         // Columnar serialization
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| Employee::columnar_encode_slice(black_box(data)))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| Employee::columnar_encode_slice(black_box(data))),
+        );
 
         // Columnar deserialization
-        group.bench_with_input(BenchmarkId::new("deserialize", size), &columnar_bytes, |b, data| {
-            b.iter(|| Employee::columnar_decode_slice(black_box(data)).unwrap())
-        });
+        group.bench_with_input(
+            BenchmarkId::new("deserialize", size),
+            &columnar_bytes,
+            |b, data| b.iter(|| Employee::columnar_decode_slice(black_box(data)).unwrap()),
+        );
     }
 
     group.finish();
@@ -519,14 +573,18 @@ fn bench_tbf_fast(c: &mut Criterion) {
         group.throughput(Throughput::Elements(size as u64));
 
         // Fast serialization (optimized hash + varint)
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| fast_encode_slice(black_box(data)))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| fast_encode_slice(black_box(data))),
+        );
 
         // Fast deserialization (optimized varint + pre-resolved dictionary)
-        group.bench_with_input(BenchmarkId::new("deserialize", size), &fast_bytes, |b, data| {
-            b.iter(|| Employee::fast_decode_slice(black_box(data)).unwrap())
-        });
+        group.bench_with_input(
+            BenchmarkId::new("deserialize", size),
+            &fast_bytes,
+            |b, data| b.iter(|| Employee::fast_decode_slice(black_box(data)).unwrap()),
+        );
     }
 
     group.finish();
@@ -545,9 +603,11 @@ fn bench_tbf_ultra(c: &mut Criterion) {
         group.throughput(Throughput::Elements(size as u64));
 
         // Ultra Direct serialization (direct encoders, no intermediate allocations)
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| Employee::ultra_encode_direct(black_box(data)))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| Employee::ultra_encode_direct(black_box(data))),
+        );
     }
 
     group.finish();
@@ -566,9 +626,11 @@ fn bench_tbf_schema(c: &mut Criterion) {
         group.throughput(Throughput::Elements(size as u64));
 
         // Type-based schema encoding with adaptive strategies
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| Employee::encode_with_schema(black_box(data)))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| Employee::encode_with_schema(black_box(data))),
+        );
     }
 
     group.finish();
@@ -587,13 +649,17 @@ fn bench_json(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| serde_json::to_string(black_box(data)).unwrap())
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| serde_json::to_string(black_box(data)).unwrap()),
+        );
 
-        group.bench_with_input(BenchmarkId::new("deserialize", size), &json_str, |b, data| {
-            b.iter(|| serde_json::from_str::<Vec<Employee>>(black_box(data)).unwrap())
-        });
+        group.bench_with_input(
+            BenchmarkId::new("deserialize", size),
+            &json_str,
+            |b, data| b.iter(|| serde_json::from_str::<Vec<Employee>>(black_box(data)).unwrap()),
+        );
     }
 
     group.finish();
@@ -612,9 +678,11 @@ fn bench_bitcode(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| bitcode::encode(black_box(data)))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| bitcode::encode(black_box(data))),
+        );
 
         group.bench_with_input(BenchmarkId::new("deserialize", size), &bytes, |b, data| {
             b.iter(|| bitcode::decode::<Vec<Employee>>(black_box(data)).unwrap())
@@ -637,11 +705,16 @@ fn bench_bincode(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| {
-                bincode::serde::encode_to_vec(black_box(data), bincode::config::standard()).unwrap()
-            })
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| {
+                b.iter(|| {
+                    bincode::serde::encode_to_vec(black_box(data), bincode::config::standard())
+                        .unwrap()
+                })
+            },
+        );
 
         group.bench_with_input(BenchmarkId::new("deserialize", size), &bytes, |b, data| {
             b.iter(|| {
@@ -670,9 +743,11 @@ fn bench_postcard(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| postcard::to_allocvec(black_box(data)).unwrap())
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| postcard::to_allocvec(black_box(data)).unwrap()),
+        );
 
         group.bench_with_input(BenchmarkId::new("deserialize", size), &bytes, |b, data| {
             b.iter(|| postcard::from_bytes::<Vec<Employee>>(black_box(data)).unwrap())
@@ -695,9 +770,11 @@ fn bench_msgpack(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(BenchmarkId::new("serialize", size), &employees, |b, data| {
-            b.iter(|| rmp_serde::to_vec(black_box(data)).unwrap())
-        });
+        group.bench_with_input(
+            BenchmarkId::new("serialize", size),
+            &employees,
+            |b, data| b.iter(|| rmp_serde::to_vec(black_box(data)).unwrap()),
+        );
 
         group.bench_with_input(BenchmarkId::new("deserialize", size), &bytes, |b, data| {
             b.iter(|| rmp_serde::from_slice::<Vec<Employee>>(black_box(data)).unwrap())
@@ -726,18 +803,14 @@ fn bench_size_comparison(c: &mut Criterion) {
         let tbf_schema_size = Employee::encode_with_schema(&employees).len();
         let tbf_columnar_size = Employee::columnar_encode_slice(&employees).len();
         let bitcode_size = bitcode::encode(&employees).len();
-        let bincode_size =
-            bincode::serde::encode_to_vec(&employees, bincode::config::standard())
-                .unwrap()
-                .len();
+        let bincode_size = bincode::serde::encode_to_vec(&employees, bincode::config::standard())
+            .unwrap()
+            .len();
         let postcard_size = postcard::to_allocvec(&employees).unwrap().len();
         let msgpack_size = rmp_serde::to_vec(&employees).unwrap().len();
 
         println!("\n=== Size Comparison ({} records) ===", size);
-        println!(
-            "JSON:              {:>8} bytes (baseline 100%)",
-            json_size
-        );
+        println!("JSON:              {:>8} bytes (baseline 100%)", json_size);
         println!(
             "TBF-schema:        {:>8} bytes ({:.1}% of JSON)  <- type-based declarative API",
             tbf_schema_size,

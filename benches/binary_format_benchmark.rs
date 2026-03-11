@@ -5,10 +5,11 @@
 //!
 //! Run with: cargo bench --bench binary_format_benchmark --features binary
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
-use serde::{Deserialize, Serialize};
+#![allow(unexpected_cfgs)]
+
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use rand::Rng;
-use std::io::Cursor;
+use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // Test Data Structures
@@ -33,16 +34,32 @@ fn generate_employees(count: usize, seed: u64) -> Vec<Employee> {
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
     let first_names = [
-        "Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank",
-        "Ivy", "Jack", "Kate", "Liam", "Maya", "Noah", "Olivia", "Pete",
+        "Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank", "Ivy", "Jack", "Kate",
+        "Liam", "Maya", "Noah", "Olivia", "Pete",
     ];
     let cities = [
-        "NYC", "LA", "Chicago", "Houston", "Phoenix", "Philadelphia",
-        "Seattle", "Denver", "Boston", "Austin",
+        "NYC",
+        "LA",
+        "Chicago",
+        "Houston",
+        "Phoenix",
+        "Philadelphia",
+        "Seattle",
+        "Denver",
+        "Boston",
+        "Austin",
     ];
     let departments = [
-        "Engineering", "Sales", "Marketing", "HR", "Finance",
-        "Operations", "Support", "Legal", "Product", "Design",
+        "Engineering",
+        "Sales",
+        "Marketing",
+        "HR",
+        "Finance",
+        "Operations",
+        "Support",
+        "Legal",
+        "Product",
+        "Design",
     ];
 
     (0..count)
@@ -65,17 +82,27 @@ fn generate_employees(count: usize, seed: u64) -> Vec<Employee> {
 
 /// Convert employees to Tauq format
 fn employees_to_tauq(employees: &[Employee]) -> String {
-    let mut lines = vec!["!def Employee id name age city department salary experience project_count".to_string()];
+    let mut lines = vec![
+        "!def Employee id name age city department salary experience project_count".to_string(),
+    ];
     for emp in employees {
         lines.push(format!(
             "{} \"{}\" {} {} {} {} {} {}",
-            emp.id, emp.name, emp.age, emp.city, emp.department, emp.salary, emp.experience, emp.project_count
+            emp.id,
+            emp.name,
+            emp.age,
+            emp.city,
+            emp.department,
+            emp.salary,
+            emp.experience,
+            emp.project_count
         ));
     }
     lines.join("\n")
 }
 
 /// Convert employees to JSON
+#[allow(dead_code)]
 fn employees_to_json(employees: &[Employee]) -> String {
     serde_json::to_string(employees).unwrap()
 }
@@ -97,20 +124,14 @@ fn bench_bitcode(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("serialize", size),
             &employees,
-            |b, data| {
-                b.iter(|| tauq::binary::to_bitcode(black_box(data)).unwrap())
-            },
+            |b, data| b.iter(|| tauq::binary::to_bitcode(black_box(data)).unwrap()),
         );
 
-        group.bench_with_input(
-            BenchmarkId::new("deserialize", size),
-            &bytes,
-            |b, data| {
-                b.iter(|| {
-                    let _: Vec<Employee> = tauq::binary::from_bitcode(black_box(data)).unwrap();
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("deserialize", size), &bytes, |b, data| {
+            b.iter(|| {
+                let _: Vec<Employee> = tauq::binary::from_bitcode(black_box(data)).unwrap();
+            })
+        });
     }
 
     group.finish();
@@ -129,20 +150,14 @@ fn bench_bincode(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("serialize", size),
             &employees,
-            |b, data| {
-                b.iter(|| tauq::binary::to_bincode(black_box(data)).unwrap())
-            },
+            |b, data| b.iter(|| tauq::binary::to_bincode(black_box(data)).unwrap()),
         );
 
-        group.bench_with_input(
-            BenchmarkId::new("deserialize", size),
-            &bytes,
-            |b, data| {
-                b.iter(|| {
-                    let _: Vec<Employee> = tauq::binary::from_bincode(black_box(data)).unwrap();
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("deserialize", size), &bytes, |b, data| {
+            b.iter(|| {
+                let _: Vec<Employee> = tauq::binary::from_bincode(black_box(data)).unwrap();
+            })
+        });
     }
 
     group.finish();
@@ -161,20 +176,14 @@ fn bench_postcard(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("serialize", size),
             &employees,
-            |b, data| {
-                b.iter(|| tauq::binary::to_postcard(black_box(data)).unwrap())
-            },
+            |b, data| b.iter(|| tauq::binary::to_postcard(black_box(data)).unwrap()),
         );
 
-        group.bench_with_input(
-            BenchmarkId::new("deserialize", size),
-            &bytes,
-            |b, data| {
-                b.iter(|| {
-                    let _: Vec<Employee> = tauq::binary::from_postcard(black_box(data)).unwrap();
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("deserialize", size), &bytes, |b, data| {
+            b.iter(|| {
+                let _: Vec<Employee> = tauq::binary::from_postcard(black_box(data)).unwrap();
+            })
+        });
     }
 
     group.finish();
@@ -193,20 +202,14 @@ fn bench_msgpack(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("serialize", size),
             &employees,
-            |b, data| {
-                b.iter(|| tauq::binary::to_msgpack(black_box(data)).unwrap())
-            },
+            |b, data| b.iter(|| tauq::binary::to_msgpack(black_box(data)).unwrap()),
         );
 
-        group.bench_with_input(
-            BenchmarkId::new("deserialize", size),
-            &bytes,
-            |b, data| {
-                b.iter(|| {
-                    let _: Vec<Employee> = tauq::binary::from_msgpack(black_box(data)).unwrap();
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("deserialize", size), &bytes, |b, data| {
+            b.iter(|| {
+                let _: Vec<Employee> = tauq::binary::from_msgpack(black_box(data)).unwrap();
+            })
+        });
     }
 
     group.finish();
@@ -228,9 +231,7 @@ fn bench_json(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("serialize", size),
             &employees,
-            |b, data| {
-                b.iter(|| serde_json::to_string(black_box(data)).unwrap())
-            },
+            |b, data| b.iter(|| serde_json::to_string(black_box(data)).unwrap()),
         );
 
         group.bench_with_input(
@@ -260,21 +261,13 @@ fn bench_tauq_text(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(
-            BenchmarkId::new("format", size),
-            &employees,
-            |b, data| {
-                b.iter(|| employees_to_tauq(black_box(data)))
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("format", size), &employees, |b, data| {
+            b.iter(|| employees_to_tauq(black_box(data)))
+        });
 
-        group.bench_with_input(
-            BenchmarkId::new("parse", size),
-            &tauq_str,
-            |b, data| {
-                b.iter(|| tauq::compile_tauq(black_box(data)).unwrap())
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("parse", size), &tauq_str, |b, data| {
+            b.iter(|| tauq::compile_tauq(black_box(data)).unwrap())
+        });
     }
 
     group.finish();
@@ -287,6 +280,7 @@ fn bench_tauq_text(c: &mut Criterion) {
 #[cfg(feature = "polars")]
 fn bench_parquet(c: &mut Criterion) {
     use polars::prelude::*;
+    use std::io::Cursor;
 
     let mut group = c.benchmark_group("parquet");
 
@@ -312,7 +306,8 @@ fn bench_parquet(c: &mut Criterion) {
             Series::new("salary".into(), salaries.clone()),
             Series::new("experience".into(), experiences.clone()),
             Series::new("project_count".into(), project_counts.clone()),
-        ]).unwrap();
+        ])
+        .unwrap();
 
         // Serialize to parquet bytes
         let mut parquet_bytes = Vec::new();
@@ -323,18 +318,16 @@ fn bench_parquet(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(size as u64));
 
-        group.bench_with_input(
-            BenchmarkId::new("serialize", size),
-            &df,
-            |b, data| {
-                b.iter(|| {
-                    let mut bytes = Vec::new();
-                    let cursor = Cursor::new(&mut bytes);
-                    ParquetWriter::new(cursor).finish(&mut data.clone()).unwrap();
-                    bytes
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("serialize", size), &df, |b, data| {
+            b.iter(|| {
+                let mut bytes = Vec::new();
+                let cursor = Cursor::new(&mut bytes);
+                ParquetWriter::new(cursor)
+                    .finish(&mut data.clone())
+                    .unwrap();
+                bytes
+            })
+        });
 
         group.bench_with_input(
             BenchmarkId::new("deserialize", size),
@@ -376,21 +369,39 @@ fn bench_size_comparison(c: &mut Criterion) {
 
         println!("\n=== Size Comparison ({} records) ===", size);
         println!("JSON:     {:>8} bytes (baseline)", json_size);
-        println!("Tauq:     {:>8} bytes ({:.1}% of JSON)", tauq_size, (tauq_size as f64 / json_size as f64) * 100.0);
+        println!(
+            "Tauq:     {:>8} bytes ({:.1}% of JSON)",
+            tauq_size,
+            (tauq_size as f64 / json_size as f64) * 100.0
+        );
         #[cfg(feature = "bitcode")]
-        println!("Bitcode:  {:>8} bytes ({:.1}% of JSON)", bitcode_size, (bitcode_size as f64 / json_size as f64) * 100.0);
+        println!(
+            "Bitcode:  {:>8} bytes ({:.1}% of JSON)",
+            bitcode_size,
+            (bitcode_size as f64 / json_size as f64) * 100.0
+        );
         #[cfg(feature = "bincode")]
-        println!("Bincode:  {:>8} bytes ({:.1}% of JSON)", bincode_size, (bincode_size as f64 / json_size as f64) * 100.0);
+        println!(
+            "Bincode:  {:>8} bytes ({:.1}% of JSON)",
+            bincode_size,
+            (bincode_size as f64 / json_size as f64) * 100.0
+        );
         #[cfg(feature = "postcard")]
-        println!("Postcard: {:>8} bytes ({:.1}% of JSON)", postcard_size, (postcard_size as f64 / json_size as f64) * 100.0);
+        println!(
+            "Postcard: {:>8} bytes ({:.1}% of JSON)",
+            postcard_size,
+            (postcard_size as f64 / json_size as f64) * 100.0
+        );
         #[cfg(feature = "rmp-serde")]
-        println!("MsgPack:  {:>8} bytes ({:.1}% of JSON)", msgpack_size, (msgpack_size as f64 / json_size as f64) * 100.0);
+        println!(
+            "MsgPack:  {:>8} bytes ({:.1}% of JSON)",
+            msgpack_size,
+            (msgpack_size as f64 / json_size as f64) * 100.0
+        );
 
         // Dummy benchmark just to have something in the group
         group.bench_function(BenchmarkId::new("size_calc", size), |b| {
-            b.iter(|| {
-                black_box(json_size + tauq_size)
-            })
+            b.iter(|| black_box(json_size + tauq_size))
         });
     }
 
@@ -402,28 +413,16 @@ fn bench_size_comparison(c: &mut Criterion) {
 // ============================================================================
 
 #[cfg(feature = "bitcode")]
-criterion_group!(
-    bitcode_benches,
-    bench_bitcode,
-);
+criterion_group!(bitcode_benches, bench_bitcode,);
 
 #[cfg(feature = "bincode")]
-criterion_group!(
-    bincode_benches,
-    bench_bincode,
-);
+criterion_group!(bincode_benches, bench_bincode,);
 
 #[cfg(feature = "postcard")]
-criterion_group!(
-    postcard_benches,
-    bench_postcard,
-);
+criterion_group!(postcard_benches, bench_postcard,);
 
 #[cfg(feature = "rmp-serde")]
-criterion_group!(
-    msgpack_benches,
-    bench_msgpack,
-);
+criterion_group!(msgpack_benches, bench_msgpack,);
 
 #[cfg(feature = "polars")]
 criterion_group!(
@@ -442,7 +441,12 @@ criterion_group!(
     bench_size_comparison,
 );
 
-#[cfg(all(feature = "bitcode", feature = "bincode", feature = "postcard", feature = "rmp-serde"))]
+#[cfg(all(
+    feature = "bitcode",
+    feature = "bincode",
+    feature = "postcard",
+    feature = "rmp-serde"
+))]
 criterion_main!(
     bitcode_benches,
     bincode_benches,
@@ -451,5 +455,10 @@ criterion_main!(
     comparison_benches,
 );
 
-#[cfg(not(all(feature = "bitcode", feature = "bincode", feature = "postcard", feature = "rmp-serde")))]
+#[cfg(not(all(
+    feature = "bitcode",
+    feature = "bincode",
+    feature = "postcard",
+    feature = "rmp-serde"
+)))]
 criterion_main!(comparison_benches);

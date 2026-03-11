@@ -2,7 +2,7 @@
 use serde_json::json;
 use tauq::tauq::Parser;
 
-// ========== BASIC SYNTAX ========== 
+// ========== BASIC SYNTAX ==========
 
 #[test]
 fn test_simple_map_entry() {
@@ -81,7 +81,7 @@ fn test_null_value() {
     assert_eq!(result, json!({"value": null}));
 }
 
-// ========== ARRAYS ========== 
+// ========== ARRAYS ==========
 
 #[test]
 fn test_simple_array() {
@@ -137,7 +137,7 @@ fn test_nested_arrays() {
     assert_eq!(result, json!({"matrix": [[1, 2], [3, 4]]}));
 }
 
-// ========== SHAPES (SCHEMAS) ========== 
+// ========== SHAPES (SCHEMAS) ==========
 
 #[test]
 fn test_shape_definition() {
@@ -227,7 +227,7 @@ fn test_multiple_shapes() {
     assert_eq!(result[1]["sku"], "ABC123");
 }
 
-// ========== MINIFICATION ========== 
+// ========== MINIFICATION ==========
 
 #[test]
 fn test_minified_syntax() {
@@ -248,7 +248,7 @@ fn test_minified_with_strings() {
     assert_eq!(result[1]["name"], "Bob");
 }
 
-// ========== COMMENTS ========== 
+// ========== COMMENTS ==========
 
 #[test]
 fn test_line_comments() {
@@ -278,7 +278,7 @@ port 8080 # Default port
     assert_eq!(result["port"], 8080);
 }
 
-// ========== EDGE CASES ========== 
+// ========== EDGE CASES ==========
 
 #[test]
 fn test_empty_input() {
@@ -358,7 +358,7 @@ golden 0.57721
     assert_eq!(result["golden"], 0.57721);
 }
 
-// ========== COMPLEX SCENARIOS ========== 
+// ========== COMPLEX SCENARIOS ==========
 
 #[test]
 fn test_real_world_config() {
@@ -418,7 +418,7 @@ fn test_product_catalog() {
     assert_eq!(products[2]["in_stock"], false);
 }
 
-// ========== TYPE SYSTEM ========== 
+// ========== TYPE SYSTEM ==========
 
 #[test]
 fn test_nested_object_type() {
@@ -471,7 +471,7 @@ Engineering 1000000 [
     assert_eq!(result["employees"][1]["role"], "Senior Engineer");
 }
 
-// ========== UNICODE & SPECIAL CHARS ========== 
+// ========== UNICODE & SPECIAL CHARS ==========
 
 #[test]
 fn test_unicode_strings() {
@@ -499,7 +499,7 @@ url "https://example.com/api?key=value&foo=bar"
     assert!(result["url"].as_str().unwrap().contains("?"));
 }
 
-// ========== WHITESPACE TOLERANCE ========== 
+// ========== WHITESPACE TOLERANCE ==========
 
 #[test]
 fn test_extra_whitespace() {
@@ -521,7 +521,7 @@ fn test_mixed_line_endings() {
     assert_eq!(result["enabled"], true);
 }
 
-// ========== LARGE DATA SETS ========== 
+// ========== LARGE DATA SETS ==========
 
 #[test]
 fn test_many_rows() {

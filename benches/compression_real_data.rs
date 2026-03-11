@@ -3,12 +3,12 @@
 //! Measures actual compression achieved on production-like data patterns
 //! and compares against JSON baseline.
 
-mod dataset_transactions;
+mod dataset_geospatial;
 mod dataset_logs;
 mod dataset_metrics;
-mod dataset_geospatial;
+mod dataset_transactions;
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 
 // ============================================================================
 // Real-World Data Compression Benchmarks
@@ -44,17 +44,13 @@ fn bench_logs_compression(c: &mut Criterion) {
     for size in [100000, 500000].iter() {
         group.throughput(Throughput::Elements(*size as u64));
 
-        group.bench_with_input(
-            BenchmarkId::new("logs_json", size),
-            size,
-            |b, &size| {
-                let data = black_box(dataset_logs::generate_event_logs(size));
-                b.iter(|| {
-                    let json = serde_json::to_vec(&data).ok();
-                    black_box(json.map(|j| j.len()).unwrap_or(0))
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("logs_json", size), size, |b, &size| {
+            let data = black_box(dataset_logs::generate_event_logs(size));
+            b.iter(|| {
+                let json = serde_json::to_vec(&data).ok();
+                black_box(json.map(|j| j.len()).unwrap_or(0))
+            })
+        });
     }
 
     group.finish();
@@ -65,7 +61,7 @@ fn bench_metrics_compression(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs(10));
 
     let count_per_series = 1000;
-    let total = count_per_series * 54;  // 54 series
+    let total = count_per_series * 54; // 54 series
 
     group.throughput(Throughput::Elements(total as u64));
 
@@ -115,13 +111,22 @@ fn bench_compression_ratio_analysis(c: &mut Criterion) {
         b.iter(|| {
             // Analyze JSON encoding sizes across different data patterns
             let tx_data = dataset_transactions::generate_transactions(10000);
-            let tx_size = serde_json::to_vec(&tx_data).ok().map(|j| j.len()).unwrap_or(0);
+            let tx_size = serde_json::to_vec(&tx_data)
+                .ok()
+                .map(|j| j.len())
+                .unwrap_or(0);
 
             let log_data = dataset_logs::generate_event_logs(10000);
-            let log_size = serde_json::to_vec(&log_data).ok().map(|j| j.len()).unwrap_or(0);
+            let log_size = serde_json::to_vec(&log_data)
+                .ok()
+                .map(|j| j.len())
+                .unwrap_or(0);
 
             let metric_data = dataset_metrics::generate_metrics(100);
-            let metric_size = serde_json::to_vec(&metric_data).ok().map(|j| j.len()).unwrap_or(0);
+            let metric_size = serde_json::to_vec(&metric_data)
+                .ok()
+                .map(|j| j.len())
+                .unwrap_or(0);
 
             black_box((tx_size, log_size, metric_size))
         })

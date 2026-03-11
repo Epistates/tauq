@@ -9,7 +9,17 @@ use tauq::{compile_tauq, compile_tauqq_safe};
 // ============================================================================
 
 /// Generate employee record as JSON
-fn make_employee(id: i32, name: &str, age: i32, city: &str, dept: &str, salary: i32, exp: i32, projects: i32) -> serde_json::Value {
+#[allow(clippy::too_many_arguments)]
+fn make_employee(
+    id: i32,
+    name: &str,
+    age: i32,
+    city: &str,
+    dept: &str,
+    salary: i32,
+    exp: i32,
+    projects: i32,
+) -> serde_json::Value {
     json!({
         "id": id,
         "name": name,
@@ -24,7 +34,9 @@ fn make_employee(id: i32, name: &str, age: i32, city: &str, dept: &str, salary: 
 
 /// Generate TAUQ input for employees using !def schema
 fn employees_to_tauq(employees: &[serde_json::Value]) -> String {
-    let mut lines = vec!["!def Employee id name age city department salary experience project_count".to_string()];
+    let mut lines = vec![
+        "!def Employee id name age city department salary experience project_count".to_string(),
+    ];
     lines.push("!use Employee".to_string());
 
     for emp in employees {
@@ -50,9 +62,16 @@ fn employees_to_tauq(employees: &[serde_json::Value]) -> String {
 
 #[test]
 fn test_single_employee_roundtrip() {
-    let employees = vec![
-        make_employee(1, "Alice A001", 30, "NYC", "Engineering", 85000, 5, 10),
-    ];
+    let employees = vec![make_employee(
+        1,
+        "Alice A001",
+        30,
+        "NYC",
+        "Engineering",
+        85000,
+        5,
+        10,
+    )];
 
     let tauq = employees_to_tauq(&employees);
     let result = compile_tauq(&tauq).expect("Failed to parse tauq");
@@ -102,12 +121,19 @@ fn test_multiple_employees_roundtrip() {
 fn test_large_employee_dataset() {
     // Generate 100 employees to stress test parsing
     let mut employees = Vec::new();
-    let names = ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank"];
+    let names = [
+        "Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank",
+    ];
     let cities = ["NYC", "LA", "Chicago", "Houston", "Phoenix"];
     let depts = ["Engineering", "Sales", "Marketing", "HR", "Finance"];
 
     for i in 0..100 {
-        let name = format!("{} {}{:03}", names[i % names.len()], (65 + (i / 26)) as u8 as char, i);
+        let name = format!(
+            "{} {}{:03}",
+            names[i % names.len()],
+            (65 + (i / 26)) as u8 as char,
+            i
+        );
         employees.push(make_employee(
             (i + 1) as i32,
             &name,
@@ -374,7 +400,10 @@ fn test_many_fields() {
 
     let def_line = format!("!def R {}", fields.join(" "));
     let use_line = "!use R";
-    let data_line = (1..=20).map(|i| i.to_string()).collect::<Vec<_>>().join(" ");
+    let data_line = (1..=20)
+        .map(|i| i.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
 
     let tauq = format!("{}\n{}\n{}", def_line, use_line, data_line);
     let result = compile_tauq(&tauq).expect("Failed to parse many fields");
@@ -403,7 +432,9 @@ fn test_long_string_values() {
     let tauq = format!(r#"message "{}""#, long_str);
     let result = compile_tauq(&tauq).expect("Failed to parse long string");
 
-    let msg = result["message"].as_str().expect("message should be a string");
+    let msg = result["message"]
+        .as_str()
+        .expect("message should be a string");
     assert_eq!(msg.len(), 1000);
 }
 
@@ -440,11 +471,15 @@ fn test_invalid_use_without_def() {
 
 #[test]
 fn test_unclosed_string() {
-    let tauq = r#"name \"Alice"#;  // Missing closing quote
-    // Parser should either handle gracefully or return error
-    // This is more of a parse robustness test
-    let _result = compile_tauq(tauq);
-    // Just checking it doesn't panic
+    // The value field starts a quoted string but never closes it.
+    // Using a regular string literal so the \" becomes a real " character,
+    // giving the lexer a genuine unterminated string literal to reject.
+    let tauq = "name \"Alice"; // Missing closing quote
+    // Parser must return an error for an unterminated string literal.
+    assert!(
+        compile_tauq(tauq).is_err(),
+        "Parser should return an error for an unclosed string literal"
+    );
 }
 
 #[test]

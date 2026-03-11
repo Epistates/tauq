@@ -19,11 +19,11 @@ fn test_implicit_rows() {
 
         let row1 = &rows[0];
         assert_eq!(row1["name"], "Alice");
-        assert_eq!(row1["age"], 30.0);
+        assert_eq!(row1["age"].as_i64(), Some(30));
 
         let row2 = &rows[1];
         assert_eq!(row2["name"], "Bob");
-        assert_eq!(row2["age"], 40.0);
+        assert_eq!(row2["age"].as_i64(), Some(40));
     } else {
         panic!("Expected array of rows, got {:?}", result);
     }
@@ -48,14 +48,14 @@ fn test_implicit_nested_rows() {
     if let Value::Object(obj) = result {
         let points = obj["points"].as_array().expect("points should be array");
         assert_eq!(points.len(), 2);
-        assert_eq!(points[0]["x"], 10.0);
-        assert_eq!(points[0]["y"], 20.0);
+        assert_eq!(points[0]["x"].as_i64(), Some(10));
+        assert_eq!(points[0]["y"].as_i64(), Some(20));
     } else if let Value::Array(arr) = result {
         let obj = &arr[0];
         let points = obj["points"].as_array().expect("points should be array");
         assert_eq!(points.len(), 2);
-        assert_eq!(points[0]["x"], 10.0);
-        assert_eq!(points[0]["y"], 20.0);
+        assert_eq!(points[0]["x"].as_i64(), Some(10));
+        assert_eq!(points[0]["y"].as_i64(), Some(20));
     } else {
         panic!("Expected object or array, got {:?}", result);
     }

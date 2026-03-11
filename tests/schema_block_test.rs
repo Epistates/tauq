@@ -22,12 +22,12 @@ fn test_schema_block() {
         assert_eq!(rows.len(), 2);
 
         let u = &rows[0];
-        assert_eq!(u["id"], 1.0);
+        assert_eq!(u["id"].as_i64(), Some(1));
         assert_eq!(u["name"], "Alice");
 
         let p = &rows[1];
-        assert_eq!(p["id"], 2.0);
-        assert_eq!(p["price"], 100.0);
+        assert_eq!(p["id"].as_i64(), Some(2));
+        assert_eq!(p["price"].as_i64(), Some(100));
     } else {
         panic!("Expected array of rows, got {:?}", result);
     }
@@ -50,9 +50,9 @@ fn test_schema_block_with_delimiter() {
 
     if let Value::Array(rows) = result {
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0]["x"], 10.0);
+        assert_eq!(rows[0]["x"].as_i64(), Some(10));
     } else if let Value::Object(obj) = result {
-        assert_eq!(obj["x"], 10.0);
+        assert_eq!(obj["x"].as_i64(), Some(10));
     } else {
         panic!("Expected row, got {:?}", result);
     }

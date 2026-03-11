@@ -8,14 +8,13 @@
 //!
 //! Run with: cargo bench --bench codec_benchmark
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use serde_json::{json, Value};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
+use rand::Rng;
+use serde_json::{Value, json};
 use tauq::tbf::{
-    CodecEncodingContext, CodecDecodingContext, CodecMetadata,
-    CompressionCodec, CodecAnalyzer,
+    CodecAnalyzer, CodecDecodingContext, CodecEncodingContext, CodecMetadata, CompressionCodec,
     encode_varint,
 };
-use rand::Rng;
 
 // ============================================================================
 // Test Data Generation
@@ -40,7 +39,7 @@ fn generate_monotonic_integers(count: usize) -> Vec<Value> {
 
 /// Generate repeated strings (optimal for Dictionary)
 fn generate_repeated_strings(count: usize) -> Vec<Value> {
-    let cities = vec!["New York", "London", "Tokyo", "Paris", "Sydney"];
+    let cities = ["New York", "London", "Tokyo", "Paris", "Sydney"];
     let mut result = Vec::new();
     for i in 0..count {
         result.push(json!(cities[i % cities.len()]));
@@ -74,13 +73,11 @@ fn generate_random_values(count: usize) -> Vec<Value> {
     use rand::Rng;
     let mut rng = rand::thread_rng();
     (0..count)
-        .map(|_| {
-            match rng.gen_range(0..4) {
-                0 => json!(rng.gen_range(0i64..1000000)),
-                1 => json!(format!("str_{}", rng.gen_range(0u32..100000))),
-                2 => json!(rng.gen_range(0..2) == 0),
-                _ => json!(rng.gen_range(0.0..1.0)),
-            }
+        .map(|_| match rng.gen_range(0..4) {
+            0 => json!(rng.gen_range(0i64..1000000)),
+            1 => json!(format!("str_{}", rng.gen_range(0u32..100000))),
+            2 => json!(rng.gen_range(0..2) == 0),
+            _ => json!(rng.gen_range(0.0..1.0)),
         })
         .collect()
 }
@@ -127,20 +124,16 @@ fn bench_codec_selection(c: &mut Criterion) {
         );
 
         // RLE: Boolean runs
-        group.bench_with_input(
-            BenchmarkId::new("rle_selection", size),
-            size,
-            |b, &size| {
-                let data = black_box(generate_boolean_runs(size));
-                b.iter(|| {
-                    let mut analyzer = CodecAnalyzer::new(100);
-                    for value in &data[..std::cmp::min(100, size)] {
-                        analyzer.add_sample(Some(value.clone()));
-                    }
-                    black_box(analyzer.choose_codec())
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("rle_selection", size), size, |b, &size| {
+            let data = black_box(generate_boolean_runs(size));
+            b.iter(|| {
+                let mut analyzer = CodecAnalyzer::new(100);
+                for value in &data[..std::cmp::min(100, size)] {
+                    analyzer.add_sample(Some(value.clone()));
+                }
+                black_box(analyzer.choose_codec())
+            });
+        });
     }
 
     group.finish();
@@ -232,16 +225,16 @@ fn bench_compression_ratio(c: &mut Criterion) {
             let mut encoded = Vec::new();
 
             // Simulate delta encoding: store deltas instead of full values
-            if let Some(first) = data.first() {
-                if let Some(first_i64) = first.as_i64() {
-                    encode_varint(first_i64 as u64, &mut encoded);
-                    let mut prev = first_i64;
-                    for value in &data[1..] {
-                        if let Some(curr) = value.as_i64() {
-                            let delta = curr - prev;
-                            encode_varint(delta as u64, &mut encoded);
-                            prev = curr;
-                        }
+            if let Some(first) = data.first()
+                && let Some(first_i64) = first.as_i64()
+            {
+                encode_varint(first_i64 as u64, &mut encoded);
+                let mut prev = first_i64;
+                for value in &data[1..] {
+                    if let Some(curr) = value.as_i64() {
+                        let delta = curr - prev;
+                        encode_varint(delta as u64, &mut encoded);
+                        prev = curr;
                     }
                 }
             }
@@ -285,7 +278,9 @@ fn bench_metadata_serialization(c: &mut Criterion) {
 
     group.bench_function("delta_metadata_encode", |b| {
         b.iter(|| {
-            let metadata = black_box(CodecMetadata::Delta { initial_value: 12345 });
+            let metadata = black_box(CodecMetadata::Delta {
+                initial_value: 12345,
+            });
             let encoded = metadata.encode();
             black_box(encoded.len())
         });
@@ -293,7 +288,9 @@ fn bench_metadata_serialization(c: &mut Criterion) {
 
     group.bench_function("dictionary_metadata_encode", |b| {
         b.iter(|| {
-            let metadata = black_box(CodecMetadata::Dictionary { dictionary_size: 512 });
+            let metadata = black_box(CodecMetadata::Dictionary {
+                dictionary_size: 512,
+            });
             let encoded = metadata.encode();
             black_box(encoded.len())
         });
@@ -340,7 +337,9 @@ fn bench_codec_decoding(c: &mut Criterion) {
             let data = black_box(generate_repeated_strings(1000));
             let mut ctx = CodecDecodingContext::from_metadata(
                 CompressionCodec::Dictionary,
-                CodecMetadata::Dictionary { dictionary_size: 10 },
+                CodecMetadata::Dictionary {
+                    dictionary_size: 10,
+                },
             );
             ctx.initialize_decoders();
 
@@ -355,10 +354,8 @@ fn bench_codec_decoding(c: &mut Criterion) {
     group.bench_function("raw_decoding_1000", |b| {
         b.iter(|| {
             let data = black_box(generate_random_values(1000));
-            let mut ctx = CodecDecodingContext::from_metadata(
-                CompressionCodec::Raw,
-                CodecMetadata::None,
-            );
+            let mut ctx =
+                CodecDecodingContext::from_metadata(CompressionCodec::Raw, CodecMetadata::None);
             ctx.initialize_decoders();
 
             for value in &data {
@@ -464,10 +461,14 @@ fn bench_codec_overhead(c: &mut Criterion) {
         b.iter(|| {
             let mut total_size = 0;
 
-            let delta_meta = CodecMetadata::Delta { initial_value: 100000 };
+            let delta_meta = CodecMetadata::Delta {
+                initial_value: 100000,
+            };
             total_size += delta_meta.encode().len();
 
-            let dict_meta = CodecMetadata::Dictionary { dictionary_size: 1000 };
+            let dict_meta = CodecMetadata::Dictionary {
+                dictionary_size: 1000,
+            };
             total_size += dict_meta.encode().len();
 
             let rle_meta = CodecMetadata::RLE;
