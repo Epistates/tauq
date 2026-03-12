@@ -7,7 +7,7 @@
 //! - Normalized ranges 0-100 (good for compression)
 //! - Natural patterns (burst/idle cycles)
 
-use rand::Rng;
+use rand::prelude::*;
 use serde_json::{Value, json};
 
 /// Common series names in a metrics system
@@ -169,7 +169,7 @@ fn get_metric_params(series: &str) -> MetricParams {
 /// # Returns
 /// Vec of metric JSON values across all series
 pub fn generate_metrics(count_per_series: usize) -> Vec<Value> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let base_timestamp = 1766534400i64; // Dec 17, 2025 00:00:00 UTC
     let mut result = Vec::new();
 
@@ -179,12 +179,12 @@ pub fn generate_metrics(count_per_series: usize) -> Vec<Value> {
 
         for i in 0..count_per_series {
             // Simulate realistic metric behavior
-            let change = if rng.gen_bool(params.burst_probability as f64) {
+            let change = if rng.random_bool(params.burst_probability as f64) {
                 // Burst: large sudden change
-                rng.gen_range(-100.0..100.0) * params.volatility
+                rng.random_range(-100.0..100.0) * params.volatility
             } else {
                 // Normal: small random walk
-                (rng.gen_range(-1.0..1.0) * params.volatility) as f32
+                (rng.random_range(-1.0..1.0) * params.volatility) as f32
             };
 
             current_value = (current_value + change).max(params.min).min(params.max);
@@ -206,7 +206,6 @@ pub fn generate_metrics(count_per_series: usize) -> Vec<Value> {
 /// Generate metrics with specific seed
 #[allow(dead_code)]
 pub fn generate_metrics_with_seed(count_per_series: usize, seed: u64) -> Vec<Value> {
-    use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     let base_timestamp = 1766534400i64;
     let mut result = Vec::new();
@@ -216,10 +215,10 @@ pub fn generate_metrics_with_seed(count_per_series: usize, seed: u64) -> Vec<Val
         let mut current_value = params.typical_value;
 
         for i in 0..count_per_series {
-            let change = if rng.gen_bool(params.burst_probability as f64) {
-                rng.gen_range(-100.0..100.0) * params.volatility
+            let change = if rng.random_bool(params.burst_probability as f64) {
+                rng.random_range(-100.0..100.0) * params.volatility
             } else {
-                (rng.gen_range(-1.0..1.0) * params.volatility) as f32
+                (rng.random_range(-1.0..1.0) * params.volatility) as f32
             };
 
             current_value = (current_value + change).max(params.min).min(params.max);

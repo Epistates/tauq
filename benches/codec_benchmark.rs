@@ -8,9 +8,10 @@
 //!
 //! Run with: cargo bench --bench codec_benchmark
 
-use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
-use rand::Rng;
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use rand::prelude::*;
 use serde_json::{Value, json};
+use std::hint::black_box;
 use tauq::tbf::{
     CodecAnalyzer, CodecDecodingContext, CodecEncodingContext, CodecMetadata, CompressionCodec,
     encode_varint,
@@ -27,11 +28,11 @@ fn generate_sorted_integers(count: usize) -> Vec<Value> {
 
 /// Generate monotonically increasing integers with small deltas (optimal for Delta)
 fn generate_monotonic_integers(count: usize) -> Vec<Value> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut result = Vec::new();
     let mut current: i64 = 0;
     for _ in 0..count {
-        current += rng.gen_range(1..10);
+        current += rng.random_range(1..10);
         result.push(json!(current));
     }
     result
@@ -70,14 +71,13 @@ fn generate_boolean_runs(count: usize) -> Vec<Value> {
 
 /// Generate random uncompressible data (Raw codec)
 fn generate_random_values(count: usize) -> Vec<Value> {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     (0..count)
-        .map(|_| match rng.gen_range(0..4) {
-            0 => json!(rng.gen_range(0i64..1000000)),
-            1 => json!(format!("str_{}", rng.gen_range(0u32..100000))),
-            2 => json!(rng.gen_range(0..2) == 0),
-            _ => json!(rng.gen_range(0.0..1.0)),
+        .map(|_| match rng.random_range(0..4) {
+            0 => json!(rng.random_range(0i64..1000000)),
+            1 => json!(format!("str_{}", rng.random_range(0u32..100000))),
+            2 => json!(rng.random_range(0..2) == 0),
+            _ => json!(rng.random_range(0.0..1.0)),
         })
         .collect()
 }

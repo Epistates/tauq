@@ -139,12 +139,12 @@ mod codec_selection_tests {
     fn test_raw_selection_random_data() {
         let mut analyzer = CodecAnalyzer::new(100);
 
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
+        use rand::RngExt;
+        let mut rng = rand::rng();
 
         // Random integers with no pattern
         for _ in 0..100 {
-            analyzer.add_sample(Some(json!(rng.gen_range(i64::MIN..i64::MAX))));
+            analyzer.add_sample(Some(json!(rng.random_range(i64::MIN..i64::MAX))));
         }
 
         let codec = analyzer.choose_codec();

@@ -9,7 +9,7 @@
 //! - Variable message lengths (raw or RLE)
 //! - Duration metrics (delta optimal for patterns)
 
-use rand::Rng;
+use rand::prelude::*;
 use serde_json::{Value, json};
 
 /// Common hostnames in a data center
@@ -164,23 +164,23 @@ impl Severity {
 /// # Returns
 /// Vec of log entry JSON values with realistic patterns
 pub fn generate_event_logs(count: usize) -> Vec<Value> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let base_timestamp = 1766534400i64; // Dec 17, 2025 00:00:00 UTC
 
     (0..count)
         .map(|i| {
-            let hostname_idx = rng.gen_range(0..HOSTNAMES.len());
-            let service_idx = rng.gen_range(0..SERVICES.len());
-            let event_type_idx = rng.gen_range(0..EVENT_TYPES.len());
+            let hostname_idx = rng.random_range(0..HOSTNAMES.len());
+            let service_idx = rng.random_range(0..SERVICES.len());
+            let event_type_idx = rng.random_range(0..EVENT_TYPES.len());
 
             // Severity distribution: mostly info/debug, rare critical
-            let severity = if rng.gen_bool(0.001) {
+            let severity = if rng.random_bool(0.001) {
                 Severity::Critical
-            } else if rng.gen_bool(0.01) {
+            } else if rng.random_bool(0.01) {
                 Severity::Error
-            } else if rng.gen_bool(0.05) {
+            } else if rng.random_bool(0.05) {
                 Severity::Warning
-            } else if rng.gen_bool(0.6) {
+            } else if rng.random_bool(0.6) {
                 Severity::Info
             } else {
                 Severity::Debug
@@ -188,9 +188,9 @@ pub fn generate_event_logs(count: usize) -> Vec<Value> {
 
             // Duration varies, but often clustered (good for delta)
             let duration_ms = match severity {
-                Severity::Error | Severity::Critical => rng.gen_range(50..5000),
-                Severity::Warning => rng.gen_range(20..1000),
-                _ => rng.gen_range(1..500),
+                Severity::Error | Severity::Critical => rng.random_range(50..5000),
+                Severity::Warning => rng.random_range(20..1000),
+                _ => rng.random_range(1..500),
             };
 
             // Message varies by severity
@@ -200,14 +200,14 @@ pub fn generate_event_logs(count: usize) -> Vec<Value> {
                         "CRITICAL: {} service on {} failed with error code {}",
                         SERVICES[service_idx],
                         HOSTNAMES[hostname_idx],
-                        rng.gen_range(500..599)
+                        rng.random_range(500..599)
                     )
                 }
                 Severity::Error => {
                     format!(
                         "Error processing request: {} ({}ms timeout)",
                         ["Connection timeout", "Database unavailable", "Parse error"]
-                            [rng.gen_range(0..3)],
+                            [rng.random_range(0..3)],
                         duration_ms
                     )
                 }
@@ -243,10 +243,10 @@ pub fn generate_event_logs(count: usize) -> Vec<Value> {
                 "severity": severity.as_str(),
                 "message": message,
                 "duration_ms": duration_ms,
-                "request_id": format!("req_{:012x}", rng.gen_range(0u64..1000000000000)),
-                "user_id": rng.gen_range(1..10000),
+                "request_id": format!("req_{:012x}", rng.random_range(0u64..1000000000000)),
+                "user_id": rng.random_range(1..10000),
                 "status_code": match severity {
-                    Severity::Error | Severity::Critical => rng.gen_range(400..599),
+                    Severity::Error | Severity::Critical => rng.random_range(400..599),
                     _ => 200,
                 },
             })
@@ -257,32 +257,31 @@ pub fn generate_event_logs(count: usize) -> Vec<Value> {
 /// Generate logs with specific seed
 #[allow(dead_code)]
 pub fn generate_event_logs_with_seed(count: usize, seed: u64) -> Vec<Value> {
-    use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     let base_timestamp = 1766534400i64;
 
     (0..count)
         .map(|i| {
-            let hostname = HOSTNAMES[rng.gen_range(0..HOSTNAMES.len())];
-            let service = SERVICES[rng.gen_range(0..SERVICES.len())];
-            let event_type = EVENT_TYPES[rng.gen_range(0..EVENT_TYPES.len())];
+            let hostname = HOSTNAMES[rng.random_range(0..HOSTNAMES.len())];
+            let service = SERVICES[rng.random_range(0..SERVICES.len())];
+            let event_type = EVENT_TYPES[rng.random_range(0..EVENT_TYPES.len())];
 
-            let severity = if rng.gen_bool(0.001) {
+            let severity = if rng.random_bool(0.001) {
                 Severity::Critical
-            } else if rng.gen_bool(0.01) {
+            } else if rng.random_bool(0.01) {
                 Severity::Error
-            } else if rng.gen_bool(0.05) {
+            } else if rng.random_bool(0.05) {
                 Severity::Warning
-            } else if rng.gen_bool(0.6) {
+            } else if rng.random_bool(0.6) {
                 Severity::Info
             } else {
                 Severity::Debug
             };
 
             let duration_ms = match severity {
-                Severity::Error | Severity::Critical => rng.gen_range(50..5000),
-                Severity::Warning => rng.gen_range(20..1000),
-                _ => rng.gen_range(1..500),
+                Severity::Error | Severity::Critical => rng.random_range(50..5000),
+                Severity::Warning => rng.random_range(20..1000),
+                _ => rng.random_range(1..500),
             };
 
             json!({
@@ -294,9 +293,9 @@ pub fn generate_event_logs_with_seed(count: usize, seed: u64) -> Vec<Value> {
                 "message": format!("{} on {}", event_type, hostname),
                 "duration_ms": duration_ms,
                 "request_id": format!("req_{:012x}", i),
-                "user_id": rng.gen_range(1..10000),
+                "user_id": rng.random_range(1..10000),
                 "status_code": match severity {
-                    Severity::Error | Severity::Critical => rng.gen_range(400..599),
+                    Severity::Error | Severity::Critical => rng.random_range(400..599),
                     _ => 200,
                 },
             })

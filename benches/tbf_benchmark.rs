@@ -4,9 +4,10 @@
 //!
 //! Run with: cargo bench --bench tbf_benchmark
 
-use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
-use rand::Rng;
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::hint::black_box;
 use tauq::TauqError;
 use tauq::tbf::{
     AdaptiveIntEncoder,
@@ -416,7 +417,6 @@ impl TableEncode for Employee {
 }
 
 fn generate_employees(count: usize, seed: u64) -> Vec<Employee> {
-    use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
     let first_names = [
@@ -450,17 +450,17 @@ fn generate_employees(count: usize, seed: u64) -> Vec<Employee> {
 
     (0..count)
         .map(|i| {
-            let first_name = first_names[rng.gen_range(0..first_names.len())];
+            let first_name = first_names[rng.random_range(0..first_names.len())];
             let suffix = format!("{}{:03}", (b'A' + (i / 1000) as u8 % 26) as char, i % 1000);
             Employee {
                 id: i as u32 + 1,
                 name: format!("{} {}", first_name, suffix),
-                age: rng.gen_range(22..65),
-                city: cities[rng.gen_range(0..cities.len())].to_string(),
-                department: departments[rng.gen_range(0..departments.len())].to_string(),
-                salary: rng.gen_range(40000..180000),
-                experience: rng.gen_range(0..35),
-                project_count: rng.gen_range(1..50),
+                age: rng.random_range(22..65),
+                city: cities[rng.random_range(0..cities.len())].to_string(),
+                department: departments[rng.random_range(0..departments.len())].to_string(),
+                salary: rng.random_range(40000..180000),
+                experience: rng.random_range(0..35),
+                project_count: rng.random_range(1..50),
             }
         })
         .collect()

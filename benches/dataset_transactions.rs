@@ -9,7 +9,7 @@
 //! - Categorical data (dictionary optimal)
 //! - Boolean flags (RLE optimal for sequences)
 
-use rand::Rng;
+use rand::prelude::*;
 use serde_json::{Value, json};
 
 /// Top merchants (real-world distribution: 80% of volume from 20% of merchants)
@@ -119,7 +119,7 @@ const CATEGORIES: &[&str] = &[
 /// # Returns
 /// Vec of transaction JSON values with realistic patterns
 pub fn generate_transactions(count: usize) -> Vec<Value> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let num_unique_users = (count as f64).sqrt() as usize; // sqrt(count) unique users
 
     // Start from a realistic timestamp (Dec 17, 2025 00:00:00 UTC)
@@ -127,31 +127,31 @@ pub fn generate_transactions(count: usize) -> Vec<Value> {
 
     (0..count)
         .map(|i| {
-            let user_id = rng.gen_range(1..=num_unique_users as i32);
-            let merchant_idx = if rng.gen_bool(0.8) {
+            let user_id = rng.random_range(1..=num_unique_users as i32);
+            let merchant_idx = if rng.random_bool(0.8) {
                 // 80% from top merchants (power law distribution)
-                rng.gen_range(0..20usize)
+                rng.random_range(0..20usize)
             } else {
                 // 20% from long tail
-                rng.gen_range(20..TOP_MERCHANTS.len())
+                rng.random_range(20..TOP_MERCHANTS.len())
             };
             let merchant = TOP_MERCHANTS[merchant_idx];
 
             // Determine success rate based on merchant (most succeed, some fail)
-            let success = rng.gen_bool(0.98);
+            let success = rng.random_bool(0.98);
 
             // Amounts vary by merchant
             let amount: f64 = match merchant_idx {
                 // Groceries typically smaller amounts
-                i if i < 5 => rng.gen_range(20.0..150.0),
+                i if i < 5 => rng.random_range(20.0..150.0),
                 // Restaurants
-                i if i < 10 => rng.gen_range(15.0..100.0),
+                i if i < 10 => rng.random_range(15.0..100.0),
                 // Retail larger
-                i if i < 20 => rng.gen_range(50.0..500.0),
+                i if i < 20 => rng.random_range(50.0..500.0),
                 // Gas station
-                i if i > 50 && i < 55 => rng.gen_range(30.0..80.0),
+                i if i > 50 && i < 55 => rng.random_range(30.0..80.0),
                 // Default
-                _ => rng.gen_range(10.0..300.0),
+                _ => rng.random_range(10.0..300.0),
             };
 
             json!({
@@ -160,10 +160,10 @@ pub fn generate_transactions(count: usize) -> Vec<Value> {
                 "user_id": user_id,
                 "merchant": merchant,
                 "amount": (amount * 100.0).round() / 100.0,  // 2 decimal places
-                "category": CATEGORIES[rng.gen_range(0..CATEGORIES.len())],
+                "category": CATEGORIES[rng.random_range(0..CATEGORIES.len())],
                 "success": success,
-                "device": if rng.gen_bool(0.6) { "mobile" } else { "web" },
-                "country": if rng.gen_bool(0.9) { "US" } else { "other" },
+                "device": if rng.random_bool(0.6) { "mobile" } else { "web" },
+                "country": if rng.random_bool(0.9) { "US" } else { "other" },
             })
         })
         .collect()
@@ -172,22 +172,21 @@ pub fn generate_transactions(count: usize) -> Vec<Value> {
 /// Generate transactions with specific characteristics
 #[allow(dead_code)]
 pub fn generate_transactions_with_seed(count: usize, seed: u64) -> Vec<Value> {
-    use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     let num_unique_users = (count as f64).sqrt() as usize;
     let base_timestamp = 1766534400i64;
 
     (0..count)
         .map(|i| {
-            let user_id = rng.gen_range(1..=num_unique_users as i32);
-            let merchant_idx = if rng.gen_bool(0.8) {
-                rng.gen_range(0..20usize)
+            let user_id = rng.random_range(1..=num_unique_users as i32);
+            let merchant_idx = if rng.random_bool(0.8) {
+                rng.random_range(0..20usize)
             } else {
-                rng.gen_range(20..TOP_MERCHANTS.len())
+                rng.random_range(20..TOP_MERCHANTS.len())
             };
             let merchant = TOP_MERCHANTS[merchant_idx];
-            let success = rng.gen_bool(0.98);
-            let amount: f64 = rng.gen_range(10.0..500.0);
+            let success = rng.random_bool(0.98);
+            let amount: f64 = rng.random_range(10.0..500.0);
 
             json!({
                 "transaction_id": i as i64 + 1000000000,
@@ -195,10 +194,10 @@ pub fn generate_transactions_with_seed(count: usize, seed: u64) -> Vec<Value> {
                 "user_id": user_id,
                 "merchant": merchant,
                 "amount": (amount * 100.0).round() / 100.0,
-                "category": CATEGORIES[rng.gen_range(0..CATEGORIES.len())],
+                "category": CATEGORIES[rng.random_range(0..CATEGORIES.len())],
                 "success": success,
-                "device": if rng.gen_bool(0.6) { "mobile" } else { "web" },
-                "country": if rng.gen_bool(0.9) { "US" } else { "other" },
+                "device": if rng.random_bool(0.6) { "mobile" } else { "web" },
+                "country": if rng.random_bool(0.9) { "US" } else { "other" },
             })
         })
         .collect()

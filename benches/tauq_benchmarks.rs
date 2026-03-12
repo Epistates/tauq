@@ -1,5 +1,6 @@
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use serde_json::json;
+use std::hint::black_box;
 use tauq::{json_to_tauq, json_to_tauq_optimized};
 
 /// Generate sample datasets for benchmarking

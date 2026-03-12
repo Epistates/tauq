@@ -7,7 +7,7 @@
 //! - Repeating accuracy values (RLE optimal)
 //! - Burst patterns (tracking, then idle)
 
-use rand::Rng;
+use rand::prelude::*;
 use serde_json::{Value, json};
 
 /// Common locations being tracked
@@ -210,7 +210,7 @@ const ACCURACY_LEVELS: &[f32] = &[5.0, 10.0, 15.0, 25.0, 50.0, 100.0];
 /// # Returns
 /// Vec of geospatial JSON values with realistic tracking patterns
 pub fn generate_geospatial_data(count: usize) -> Vec<Value> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let base_timestamp = 1766534400i64;
     let mut result = Vec::new();
 
@@ -219,21 +219,21 @@ pub fn generate_geospatial_data(count: usize) -> Vec<Value> {
 
     for point_idx in 0..count {
         let device_id = (point_idx % num_devices) as i32 + 1000;
-        let location_idx = rng.gen_range(0..LOCATIONS.len());
+        let location_idx = rng.random_range(0..LOCATIONS.len());
         let location = &LOCATIONS[location_idx];
 
         // Add realistic GPS noise (GPS typically accurate within 5-100 meters)
         // ~0.00005 degrees = ~5 meters at equator
-        let lat_noise = rng.gen_range(-0.0001..0.0001);
-        let lon_noise = rng.gen_range(-0.0001..0.0001);
+        let lat_noise = rng.random_range(-0.0001..0.0001);
+        let lon_noise = rng.random_range(-0.0001..0.0001);
 
         // Accuracy clusters (good for RLE)
-        let accuracy_idx = if rng.gen_bool(0.6) {
+        let accuracy_idx = if rng.random_bool(0.6) {
             0 // Most data has good accuracy (5m)
-        } else if rng.gen_bool(0.8) {
+        } else if rng.random_bool(0.8) {
             1 // Some moderate accuracy (10m)
         } else {
-            rng.gen_range(2..ACCURACY_LEVELS.len()) // Occasional poor accuracy
+            rng.random_range(2..ACCURACY_LEVELS.len()) // Occasional poor accuracy
         };
 
         result.push(json!({
@@ -243,8 +243,8 @@ pub fn generate_geospatial_data(count: usize) -> Vec<Value> {
             "longitude": location.longitude + lon_noise,
             "timestamp": base_timestamp + (point_idx as i64 * 30),  // 30 seconds apart
             "accuracy": ACCURACY_LEVELS[accuracy_idx],
-            "altitude": rng.gen_range(0..500) as f32,
-            "speed": rng.gen_range(0.0..100.0),
+            "altitude": rng.random_range(0..500) as f32,
+            "speed": rng.random_range(0.0..100.0),
         }));
     }
 
@@ -254,7 +254,6 @@ pub fn generate_geospatial_data(count: usize) -> Vec<Value> {
 /// Generate geospatial data with specific seed
 #[allow(dead_code)]
 pub fn generate_geospatial_data_with_seed(count: usize, seed: u64) -> Vec<Value> {
-    use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     let base_timestamp = 1766534400i64;
     let mut result = Vec::new();
@@ -263,18 +262,18 @@ pub fn generate_geospatial_data_with_seed(count: usize, seed: u64) -> Vec<Value>
 
     for point_idx in 0..count {
         let device_id = (point_idx % num_devices) as i32 + 1000;
-        let location_idx = rng.gen_range(0..LOCATIONS.len());
+        let location_idx = rng.random_range(0..LOCATIONS.len());
         let location = &LOCATIONS[location_idx];
 
-        let lat_noise = rng.gen_range(-0.0001..0.0001);
-        let lon_noise = rng.gen_range(-0.0001..0.0001);
+        let lat_noise = rng.random_range(-0.0001..0.0001);
+        let lon_noise = rng.random_range(-0.0001..0.0001);
 
-        let accuracy_idx = if rng.gen_bool(0.6) {
+        let accuracy_idx = if rng.random_bool(0.6) {
             0
-        } else if rng.gen_bool(0.8) {
+        } else if rng.random_bool(0.8) {
             1
         } else {
-            rng.gen_range(2..ACCURACY_LEVELS.len())
+            rng.random_range(2..ACCURACY_LEVELS.len())
         };
 
         result.push(json!({
@@ -284,8 +283,8 @@ pub fn generate_geospatial_data_with_seed(count: usize, seed: u64) -> Vec<Value>
             "longitude": location.longitude + lon_noise,
             "timestamp": base_timestamp + (point_idx as i64 * 30),
             "accuracy": ACCURACY_LEVELS[accuracy_idx],
-            "altitude": rng.gen_range(0..500) as f32,
-            "speed": rng.gen_range(0.0..100.0),
+            "altitude": rng.random_range(0..500) as f32,
+            "speed": rng.random_range(0.0..100.0),
         }));
     }
 

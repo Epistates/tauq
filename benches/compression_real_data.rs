@@ -8,7 +8,8 @@ mod dataset_logs;
 mod dataset_metrics;
 mod dataset_transactions;
 
-use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use std::hint::black_box;
 
 // ============================================================================
 // Real-World Data Compression Benchmarks
