@@ -40,23 +40,23 @@ required-features = ["lsp"]
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
-once_cell = "1.18"
+once_cell = "1.21"
 thiserror = "2.0"
-pyo3 = { version = "0.24", features = ["extension-module"], optional = true }
-rhai = { version = "1.19", optional = true, features = ["serde"] }
-tempfile = "3.8"
-ahash = "=0.8.11"
-jni = { version = "0.21", optional = true }
+pyo3 = { version = "0.28", features = ["extension-module"], optional = true }
+rhai = { version = "1.24", optional = true, features = ["serde"] }
+tempfile = "3.27"
+ahash = "=0.8.12"
+jni = { version = "0.22", optional = true }
 tower-lsp = { version = "0.20.0", optional = true }
-tokio = { version = "1.48.0", features = ["full"], optional = true }
+tokio = { version = "1.50", features = ["full"], optional = true }
 # Iceberg integration
-iceberg = { version = "0.7", optional = true }
-arrow-array = { version = "57.0", optional = true }
-arrow-schema = { version = "57.0", optional = true }
+iceberg = { version = "0.8", optional = true }
+arrow-array = { version = "58.0", optional = true }
+arrow-schema = { version = "58.0", optional = true }
 futures = { version = "0.3", optional = true }
-bytes = { version = "1.10", optional = true }
+bytes = { version = "1.11", optional = true }
 # Performance optimizations (Phase 2)
-rayon = { version = "1.8", optional = true }
+rayon = { version = "1.11", optional = true }
 
 [features]
 default = ["rhai", "performance"]
@@ -68,8 +68,8 @@ performance = ["dep:rayon"]
 
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
-rand = "0.8"
+criterion = { version = "0.8", features = ["html_reports"] }
+rand = "0.10"
 # Comparison formats for benchmarking
 bitcode = { version = "0.6", features = ["serde"] }
 bincode = { version = "2.0", features = ["serde"] }
@@ -93,4 +93,4 @@ name = "compression_real_data"
 harness = false
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "0.4", features = ["wasm_js"] }
