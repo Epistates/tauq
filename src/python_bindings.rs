@@ -17,6 +17,8 @@
 // ```
 
 #[cfg(feature = "python-bindings")]
+use pyo3::Py;
+#[cfg(feature = "python-bindings")]
 use pyo3::exceptions::PyValueError;
 #[cfg(feature = "python-bindings")]
 use pyo3::prelude::*;
@@ -32,7 +34,7 @@ use std::path::PathBuf;
 
 /// Convert JSON Value to Python object
 #[cfg(feature = "python-bindings")]
-fn json_to_python(py: Python<'_>, value: &JsonValue) -> PyResult<PyObject> {
+fn json_to_python(py: Python<'_>, value: &JsonValue) -> PyResult<Py<PyAny>> {
     use pyo3::IntoPyObjectExt;
 
     match value {
@@ -81,13 +83,13 @@ fn python_to_json(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<JsonValue>
         ))
     } else if let Ok(s) = obj.extract::<String>() {
         Ok(JsonValue::String(s))
-    } else if let Ok(list) = obj.downcast::<PyList>() {
+    } else if let Ok(list) = obj.cast::<PyList>() {
         let mut arr = Vec::new();
         for item in list.iter() {
             arr.push(python_to_json(py, &item)?);
         }
         Ok(JsonValue::Array(arr))
-    } else if let Ok(dict) = obj.downcast::<PyDict>() {
+    } else if let Ok(dict) = obj.cast::<PyDict>() {
         let mut map = serde_json::Map::new();
         for (key, val) in dict.iter() {
             let key_str = key.extract::<String>()?;
@@ -125,7 +127,7 @@ fn python_to_json(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<JsonValue>
 /// ```
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn loads(py: Python<'_>, source: &str) -> PyResult<PyObject> {
+fn loads(py: Python<'_>, source: &str) -> PyResult<Py<PyAny>> {
     let json = compile_tauq(source)
         .map_err(|e| PyValueError::new_err(format!("Tauq parse error: {}", e)))?;
 
@@ -149,7 +151,7 @@ fn loads(py: Python<'_>, source: &str) -> PyResult<PyObject> {
 /// ```
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn load(py: Python<'_>, path: PathBuf) -> PyResult<PyObject> {
+fn load(py: Python<'_>, path: PathBuf) -> PyResult<Py<PyAny>> {
     let source = std::fs::read_to_string(&path)
         .map_err(|e| PyValueError::new_err(format!("File read error: {}", e)))?;
 
@@ -189,7 +191,7 @@ fn load(py: Python<'_>, path: PathBuf) -> PyResult<PyObject> {
 /// ```
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn exec_tauqq(py: Python<'_>, source: &str) -> PyResult<PyObject> {
+fn exec_tauqq(py: Python<'_>, source: &str) -> PyResult<Py<PyAny>> {
     let json =
         compile_tauqq(source, true) // Safe mode by default - shell execution disabled
             .map_err(|e| PyValueError::new_err(format!("TauqQ execution error: {}", e)))?;
@@ -203,8 +205,9 @@ fn exec_tauqq(py: Python<'_>, source: &str) -> PyResult<PyObject> {
 /// This enables arbitrary shell command execution via !emit, !run, and !pipe directives.
 /// Only use this with trusted input.
 #[cfg(feature = "python-bindings")]
+#[allow(clippy::unsafe_removed_from_name)]
 #[pyfunction]
-fn exec_tauqq_unsafe(py: Python<'_>, source: &str) -> PyResult<PyObject> {
+fn exec_tauqq_unsafe(py: Python<'_>, source: &str) -> PyResult<Py<PyAny>> {
     let json =
         compile_tauqq(source, false) // Shell execution enabled
             .map_err(|e| PyValueError::new_err(format!("TauqQ execution error: {}", e)))?;
@@ -306,7 +309,7 @@ fn dump(py: Python<'_>, obj: Bound<'_, PyAny>, path: PathBuf) -> PyResult<()> {
 /// Bytes object containing TBF data
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn tbf_dumps(py: Python<'_>, obj: Bound<'_, PyAny>) -> PyResult<PyObject> {
+fn tbf_dumps(py: Python<'_>, obj: Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
     use pyo3::types::PyBytes;
 
     let json = python_to_json(py, &obj)?;
@@ -325,7 +328,7 @@ fn tbf_dumps(py: Python<'_>, obj: Bound<'_, PyAny>) -> PyResult<PyObject> {
 /// Python dict/list/value
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn tbf_loads(py: Python<'_>, data: &[u8]) -> PyResult<PyObject> {
+fn tbf_loads(py: Python<'_>, data: &[u8]) -> PyResult<Py<PyAny>> {
     let json = crate::tbf::decode(data)
         .map_err(|e| PyValueError::new_err(format!("TBF decode error: {}", e)))?;
 
@@ -359,7 +362,7 @@ fn tbf_dump(py: Python<'_>, obj: Bound<'_, PyAny>, path: PathBuf) -> PyResult<()
 /// Python dict/list/value
 #[cfg(feature = "python-bindings")]
 #[pyfunction]
-fn tbf_load(py: Python<'_>, path: PathBuf) -> PyResult<PyObject> {
+fn tbf_load(py: Python<'_>, path: PathBuf) -> PyResult<Py<PyAny>> {
     let bytes =
         std::fs::read(&path).map_err(|e| PyValueError::new_err(format!("Read error: {}", e)))?;
 
@@ -383,10 +386,17 @@ fn tbf_to_tauq(data: &[u8]) -> PyResult<String> {
         .map_err(|e| PyValueError::new_err(format!("TBF decode error: {}", e)))
 }
 
+/// Streaming Tauq parser that accepts chunks of text incrementally.
+///
+/// Chunks are buffered internally. Call `push` to add data and retrieve any
+/// complete records parsed so far, then call `finish` to flush the remainder.
 #[cfg(feature = "python-bindings")]
 #[pyclass]
 struct TauqStream {
-    parser: crate::streaming::StreamingParser,
+    /// Accumulated source text from all pushed chunks.
+    buffer: String,
+    /// Byte offset into `buffer` up to which records have already been yielded.
+    consumed: usize,
 }
 
 #[cfg(feature = "python-bindings")]
@@ -395,34 +405,65 @@ impl TauqStream {
     #[new]
     fn new() -> Self {
         Self {
-            parser: crate::streaming::StreamingParser::new(),
+            buffer: String::new(),
+            consumed: 0,
         }
     }
 
-    fn push(&mut self, py: Python<'_>, chunk: &str) -> PyResult<PyObject> {
-        self.parser.push(chunk);
+    /// Push a chunk of Tauq text and return any newly complete records.
+    ///
+    /// Records are considered complete when a newline-terminated data row has
+    /// been accumulated. The parser uses the full buffered source each time so
+    /// that schema directives (e.g. `!def`) seen in earlier chunks remain in
+    /// scope for later chunks.
+    fn push(&mut self, py: Python<'_>, chunk: &str) -> PyResult<Py<PyAny>> {
+        self.buffer.push_str(chunk);
+
+        let source = &self.buffer;
+        let parser = crate::tauq::streaming::StreamingParser::new(source);
 
         let list = pyo3::types::PyList::empty(py);
-        while let Some(val) = self
-            .parser
-            .next_value()
-            .map_err(|e| PyValueError::new_err(format!("Stream Yield Error: {}", e)))?
-        {
-            list.append(json_to_python(py, &val)?)?;
+        let mut record_count: usize = 0;
+
+        for result in parser {
+            let val =
+                result.map_err(|e| PyValueError::new_err(format!("Stream parse error: {}", e)))?;
+            // Only emit records beyond what we've already yielded.
+            if record_count >= self.consumed {
+                list.append(json_to_python(py, &val)?)?;
+            }
+            record_count += 1;
         }
 
+        self.consumed = record_count;
         Ok(list.unbind().into_any())
     }
 
-    fn finish(&mut self, py: Python<'_>) -> PyResult<PyObject> {
+    /// Flush any remaining buffered data and return all remaining records.
+    ///
+    /// After calling `finish` the stream is reset and can be reused.
+    fn finish(&mut self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        // Re-parse the full buffer to pick up any trailing records that were
+        // not yet emitted by `push`.
+        let source = &self.buffer;
+        let parser = crate::tauq::streaming::StreamingParser::new(source);
+
         let list = pyo3::types::PyList::empty(py);
-        while let Some(val) = self
-            .parser
-            .next_value()
-            .map_err(|e| PyValueError::new_err(format!("Stream Yield Error: {}", e)))?
-        {
-            list.append(json_to_python(py, &val)?)?;
+        let mut record_count: usize = 0;
+
+        for result in parser {
+            let val =
+                result.map_err(|e| PyValueError::new_err(format!("Stream parse error: {}", e)))?;
+            if record_count >= self.consumed {
+                list.append(json_to_python(py, &val)?)?;
+            }
+            record_count += 1;
         }
+
+        // Reset for potential reuse.
+        self.buffer.clear();
+        self.consumed = 0;
+
         Ok(list.unbind().into_any())
     }
 }

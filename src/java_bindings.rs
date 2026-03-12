@@ -3,252 +3,237 @@
 // Enables Java/Kotlin applications to parse and generate Tauq via JNI.
 //
 // Native Methods:
-// - Java_com_tauq_Tauq_parseToJson(JNIEnv, JClass, jstring) -> jstring
-// - Java_com_tauq_Tauq_formatJson(JNIEnv, JClass, jstring) -> jstring
-// - Java_com_tauq_Tauq_toTbf(JNIEnv, JClass, jstring) -> jbyteArray
-// - Java_com_tauq_Tauq_tbfToJson(JNIEnv, JClass, jbyteArray) -> jstring
+// - Java_com_tauq_Tauq_parseToJson(EnvUnowned, JClass, jstring) -> jstring
+// - Java_com_tauq_Tauq_formatJson(EnvUnowned, JClass, jstring) -> jstring
+// - Java_com_tauq_Tauq_toTbf(EnvUnowned, JClass, jstring) -> jbyteArray
+// - Java_com_tauq_Tauq_tbfToJson(EnvUnowned, JClass, jbyteArray) -> jstring
 
 use crate::{compile_tauq, format_to_tauq};
-use jni::JNIEnv;
+use jni::EnvUnowned;
+use jni::errors::ThrowRuntimeExAndDefault;
+use jni::jni_str;
 use jni::objects::{JByteArray, JClass, JString};
+use jni::strings::JNIString;
 use jni::sys::jstring;
 
 /// Class:     com_tauq_Tauq
 /// Method:    parseToJson
 /// Signature: (Ljava/lang/String;)Ljava/lang/String;
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_tauq_Tauq_parseToJson(
-    mut env: JNIEnv,
-    _class: JClass,
-    input: JString,
+pub extern "system" fn Java_com_tauq_Tauq_parseToJson<'local>(
+    mut unowned_env: EnvUnowned<'local>,
+    _class: JClass<'local>,
+    input: JString<'local>,
 ) -> jstring {
-    // 1. Convert Java String to Rust String
-    let input: String = match env.get_string(&input) {
-        Ok(s) => s.into(),
-        Err(_) => return std::ptr::null_mut(),
-    };
+    unowned_env
+        .with_env(|env| -> jni::errors::Result<jstring> {
+            // 1. Convert Java String to Rust String
+            let input: String = input.mutf8_chars(env)?.into();
 
-    // 2. Compile Tauq
-    let result = match compile_tauq(&input) {
-        Ok(json_val) => json_val,
-        Err(e) => {
-            // Throw Java Exception
-            let _ = env.throw_new(
-                "java/lang/IllegalArgumentException",
-                format!("Tauq Parse Error: {}", e),
-            );
-            return std::ptr::null_mut();
-        }
-    };
+            // 2. Compile Tauq
+            let result = match compile_tauq(&input) {
+                Ok(json_val) => json_val,
+                Err(e) => {
+                    let _ = env.throw_new(
+                        jni_str!("java/lang/IllegalArgumentException"),
+                        JNIString::new(format!("Tauq Parse Error: {}", e)),
+                    );
+                    return Ok(std::ptr::null_mut());
+                }
+            };
 
-    // 3. Serialize to JSON String
-    let json_str = match serde_json::to_string(&result) {
-        Ok(s) => s,
-        Err(e) => {
-            let _ = env.throw_new(
-                "java/lang/RuntimeException",
-                format!("JSON Serialization Error: {}", e),
-            );
-            return std::ptr::null_mut();
-        }
-    };
+            // 3. Serialize to JSON String
+            let json_str = match serde_json::to_string(&result) {
+                Ok(s) => s,
+                Err(e) => {
+                    let _ = env.throw_new(
+                        jni_str!("java/lang/RuntimeException"),
+                        JNIString::new(format!("JSON Serialization Error: {}", e)),
+                    );
+                    return Ok(std::ptr::null_mut());
+                }
+            };
 
-    // 4. Convert Rust String back to Java String
-    let output = match env.new_string(json_str) {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    output.into_raw()
+            // 4. Convert Rust String back to Java String
+            Ok(env.new_string(json_str)?.into_raw())
+        })
+        .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Class:     com_tauq_Tauq
 /// Method:    execQuery
 /// Signature: (Ljava/lang/String;Z)Ljava/lang/String;
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_tauq_Tauq_execQuery(
-    mut env: JNIEnv,
-    _class: JClass,
-    input: JString,
+pub extern "system" fn Java_com_tauq_Tauq_execQuery<'local>(
+    mut unowned_env: EnvUnowned<'local>,
+    _class: JClass<'local>,
+    input: JString<'local>,
     safe_mode: jni::sys::jboolean,
 ) -> jstring {
-    // 1. Convert Java String
-    let input: String = match env.get_string(&input) {
-        Ok(s) => s.into(),
-        Err(_) => return std::ptr::null_mut(),
-    };
+    unowned_env
+        .with_env(|env| -> jni::errors::Result<jstring> {
+            // 1. Convert Java String
+            let input: String = input.mutf8_chars(env)?.into();
 
-    // 2. Execute TQQ
-    let is_safe = safe_mode != 0;
+            // 2. Execute TQQ — jboolean is bool in jni 0.22
+            let is_safe = safe_mode;
 
-    let result = match crate::compile_tauqq(&input, is_safe) {
-        Ok(json_val) => json_val,
-        Err(e) => {
-            let _ = env.throw_new(
-                "java/lang/IllegalArgumentException",
-                format!("Tauq Query Error: {}", e),
-            );
-            return std::ptr::null_mut();
-        }
-    };
+            let result = match crate::compile_tauqq(&input, is_safe) {
+                Ok(json_val) => json_val,
+                Err(e) => {
+                    let _ = env.throw_new(
+                        jni_str!("java/lang/IllegalArgumentException"),
+                        JNIString::new(format!("Tauq Query Error: {}", e)),
+                    );
+                    return Ok(std::ptr::null_mut());
+                }
+            };
 
-    // 3. Serialize
-    let json_str = match serde_json::to_string(&result) {
-        Ok(s) => s,
-        Err(e) => {
-            let _ = env.throw_new(
-                "java/lang/RuntimeException",
-                format!("JSON Serialization Error: {}", e),
-            );
-            return std::ptr::null_mut();
-        }
-    };
+            // 3. Serialize
+            let json_str = match serde_json::to_string(&result) {
+                Ok(s) => s,
+                Err(e) => {
+                    let _ = env.throw_new(
+                        jni_str!("java/lang/RuntimeException"),
+                        JNIString::new(format!("JSON Serialization Error: {}", e)),
+                    );
+                    return Ok(std::ptr::null_mut());
+                }
+            };
 
-    // 4. Return
-    let output = match env.new_string(json_str) {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    output.into_raw()
+            // 4. Return
+            Ok(env.new_string(json_str)?.into_raw())
+        })
+        .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Class:     com_tauq_Tauq
 /// Method:    minify
 /// Signature: (Ljava/lang/String;)Ljava/lang/String;
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_tauq_Tauq_minify(
-    mut env: JNIEnv,
-    _class: JClass,
-    input: JString,
+pub extern "system" fn Java_com_tauq_Tauq_minify<'local>(
+    mut unowned_env: EnvUnowned<'local>,
+    _class: JClass<'local>,
+    input: JString<'local>,
 ) -> jstring {
-    let input: String = match env.get_string(&input) {
-        Ok(s) => s.into(),
-        Err(_) => return std::ptr::null_mut(),
-    };
+    unowned_env
+        .with_env(|env| -> jni::errors::Result<jstring> {
+            let input: String = input.mutf8_chars(env)?.into();
 
-    let json_val = match crate::compile_tauq(&input) {
-        Ok(v) => v,
-        Err(e) => {
-            let _ = env.throw_new(
-                "java/lang/IllegalArgumentException",
-                format!("Tauq Parse Error: {}", e),
-            );
-            return std::ptr::null_mut();
-        }
-    };
+            let json_val = match crate::compile_tauq(&input) {
+                Ok(v) => v,
+                Err(e) => {
+                    let _ = env.throw_new(
+                        jni_str!("java/lang/IllegalArgumentException"),
+                        JNIString::new(format!("Tauq Parse Error: {}", e)),
+                    );
+                    return Ok(std::ptr::null_mut());
+                }
+            };
 
-    let minified = crate::minify_tauq_str(&json_val);
+            let minified = crate::minify_tauq_str(&json_val);
 
-    let output = match env.new_string(minified) {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    output.into_raw()
+            Ok(env.new_string(minified)?.into_raw())
+        })
+        .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Class:     com_tauq_Tauq
 /// Method:    formatJson
 /// Signature: (Ljava/lang/String;)Ljava/lang/String;
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_tauq_Tauq_formatJson(
-    mut env: JNIEnv,
-    _class: JClass,
-    json_input: JString,
+pub extern "system" fn Java_com_tauq_Tauq_formatJson<'local>(
+    mut unowned_env: EnvUnowned<'local>,
+    _class: JClass<'local>,
+    json_input: JString<'local>,
 ) -> jstring {
-    // 1. Convert Java String to Rust String
-    let input: String = match env.get_string(&json_input) {
-        Ok(s) => s.into(),
-        Err(_) => return std::ptr::null_mut(),
-    };
+    unowned_env
+        .with_env(|env| -> jni::errors::Result<jstring> {
+            // 1. Convert Java String to Rust String
+            let input: String = json_input.mutf8_chars(env)?.into();
 
-    // 2. Parse JSON
-    let json_val: serde_json::Value = match serde_json::from_str(&input) {
-        Ok(v) => v,
-        Err(e) => {
-            let _ = env.throw_new(
-                "java/lang/IllegalArgumentException",
-                format!("Invalid JSON: {}", e),
-            );
-            return std::ptr::null_mut();
-        }
-    };
+            // 2. Parse JSON
+            let json_val: serde_json::Value = match serde_json::from_str(&input) {
+                Ok(v) => v,
+                Err(e) => {
+                    let _ = env.throw_new(
+                        jni_str!("java/lang/IllegalArgumentException"),
+                        JNIString::new(format!("Invalid JSON: {}", e)),
+                    );
+                    return Ok(std::ptr::null_mut());
+                }
+            };
 
-    // 3. Format to Tauq
-    let tauq_str = format_to_tauq(&json_val);
+            // 3. Format to Tauq
+            let tauq_str = format_to_tauq(&json_val);
 
-    // 4. Return Java String
-    let output = match env.new_string(tauq_str) {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    output.into_raw()
+            // 4. Return Java String
+            Ok(env.new_string(tauq_str)?.into_raw())
+        })
+        .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Class:     com_tauq_Tauq
 /// Method:    toTbf
-/// Signature: (Ljava/lang/String;)V
+/// Signature: (Ljava/lang/String;)[B
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_tauq_Tauq_toTbf(
-    mut env: JNIEnv,
-    _class: JClass,
-    input: JString,
+pub extern "system" fn Java_com_tauq_Tauq_toTbf<'local>(
+    mut unowned_env: EnvUnowned<'local>,
+    _class: JClass<'local>,
+    input: JString<'local>,
 ) -> jni::sys::jbyteArray {
-    // 1. Convert Java String
-    let input: String = match env.get_string(&input) {
-        Ok(s) => s.into(),
-        Err(_) => return std::ptr::null_mut(),
-    };
+    unowned_env
+        .with_env(|env| -> jni::errors::Result<jni::sys::jbyteArray> {
+            // 1. Convert Java String
+            let input: String = input.mutf8_chars(env)?.into();
 
-    // 2. Parse (Auto-detect JSON/Tauq) and Encode
-    let json_val = if input.trim_start().starts_with('{') || input.trim_start().starts_with('[') {
-        match serde_json::from_str(&input) {
-            Ok(v) => v,
-            Err(e) => {
-                let _ = env.throw_new(
-                    "java/lang/IllegalArgumentException",
-                    format!("JSON Parse Error: {}", e),
-                );
-                return std::ptr::null_mut();
-            }
-        }
-    } else {
-        match compile_tauq(&input) {
-            Ok(v) => v,
-            Err(e) => {
-                let _ = env.throw_new(
-                    "java/lang/IllegalArgumentException",
-                    format!("Tauq Parse Error: {}", e),
-                );
-                return std::ptr::null_mut();
-            }
-        }
-    };
+            // 2. Parse (Auto-detect JSON/Tauq) and Encode
+            let json_val =
+                if input.trim_start().starts_with('{') || input.trim_start().starts_with('[') {
+                    match serde_json::from_str(&input) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            let _ = env.throw_new(
+                                jni_str!("java/lang/IllegalArgumentException"),
+                                JNIString::new(format!("JSON Parse Error: {}", e)),
+                            );
+                            return Ok(std::ptr::null_mut());
+                        }
+                    }
+                } else {
+                    match compile_tauq(&input) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            let _ = env.throw_new(
+                                jni_str!("java/lang/IllegalArgumentException"),
+                                JNIString::new(format!("Tauq Parse Error: {}", e)),
+                            );
+                            return Ok(std::ptr::null_mut());
+                        }
+                    }
+                };
 
-    match crate::tbf::encode_json(&json_val) {
-        Ok(bytes) => {
-            let output = match env.byte_array_from_slice(&bytes) {
-                Ok(arr) => arr,
+            match crate::tbf::encode_json(&json_val) {
+                Ok(bytes) => match env.byte_array_from_slice(&bytes) {
+                    Ok(arr) => Ok(arr.into_raw()),
+                    Err(e) => {
+                        let _ = env.throw_new(
+                            jni_str!("java/lang/RuntimeException"),
+                            JNIString::new(format!("JNI Array Creation Error: {}", e)),
+                        );
+                        Ok(std::ptr::null_mut())
+                    }
+                },
                 Err(e) => {
                     let _ = env.throw_new(
-                        "java/lang/RuntimeException",
-                        format!("JNI Array Creation Error: {}", e),
+                        jni_str!("java/lang/RuntimeException"),
+                        JNIString::new(format!("TBF Encode Error: {}", e)),
                     );
-                    return std::ptr::null_mut();
+                    Ok(std::ptr::null_mut())
                 }
-            };
-            output.into_raw()
-        }
-        Err(e) => {
-            let _ = env.throw_new(
-                "java/lang/RuntimeException",
-                format!("TBF Encode Error: {}", e),
-            );
-            std::ptr::null_mut()
-        }
-    }
+            }
+        })
+        .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Class:     com_tauq_Tauq
@@ -262,39 +247,37 @@ pub extern "system" fn Java_com_tauq_Tauq_toTbf(
 /// reference obtained from the JVM.
 #[unsafe(no_mangle)]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub extern "system" fn Java_com_tauq_Tauq_tbfToJson(
-    mut env: JNIEnv,
-    _class: JClass,
+pub extern "system" fn Java_com_tauq_Tauq_tbfToJson<'local>(
+    mut unowned_env: EnvUnowned<'local>,
+    _class: JClass<'local>,
     data: jni::sys::jbyteArray,
 ) -> jstring {
-    let array = unsafe { JByteArray::from_raw(data) };
-    let bytes = match env.convert_byte_array(&array) {
-        Ok(b) => b,
-        Err(_) => return std::ptr::null_mut(),
-    };
+    unowned_env
+        .with_env(|env| -> jni::errors::Result<jstring> {
+            let array = unsafe { JByteArray::from_raw(env, data) };
+            let bytes = env.convert_byte_array(&array)?;
 
-    match crate::tbf::decode(&bytes) {
-        Ok(json_val) => match serde_json::to_string(&json_val) {
-            Ok(s) => match env.new_string(s) {
-                Ok(js) => js.into_raw(),
-                Err(_) => std::ptr::null_mut(),
-            },
-            Err(e) => {
-                let _ = env.throw_new(
-                    "java/lang/RuntimeException",
-                    format!("JSON Serialize Error: {}", e),
-                );
-                std::ptr::null_mut()
+            match crate::tbf::decode(&bytes) {
+                Ok(json_val) => match serde_json::to_string(&json_val) {
+                    Ok(s) => Ok(env.new_string(s)?.into_raw()),
+                    Err(e) => {
+                        let _ = env.throw_new(
+                            jni_str!("java/lang/RuntimeException"),
+                            JNIString::new(format!("JSON Serialize Error: {}", e)),
+                        );
+                        Ok(std::ptr::null_mut())
+                    }
+                },
+                Err(e) => {
+                    let _ = env.throw_new(
+                        jni_str!("java/lang/IllegalArgumentException"),
+                        JNIString::new(format!("TBF Decode Error: {}", e)),
+                    );
+                    Ok(std::ptr::null_mut())
+                }
             }
-        },
-        Err(e) => {
-            let _ = env.throw_new(
-                "java/lang/IllegalArgumentException",
-                format!("TBF Decode Error: {}", e),
-            );
-            std::ptr::null_mut()
-        }
-    }
+        })
+        .resolve::<ThrowRuntimeExAndDefault>()
 }
 
 /// Class:     com_tauq_Tauq
@@ -302,28 +285,26 @@ pub extern "system" fn Java_com_tauq_Tauq_tbfToJson(
 /// Signature: ([B)Ljava/lang/String;
 #[unsafe(no_mangle)]
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub extern "system" fn Java_com_tauq_Tauq_tbfToTauq(
-    mut env: JNIEnv,
-    _class: JClass,
+pub extern "system" fn Java_com_tauq_Tauq_tbfToTauq<'local>(
+    mut unowned_env: EnvUnowned<'local>,
+    _class: JClass<'local>,
     data: jni::sys::jbyteArray,
 ) -> jstring {
-    let array = unsafe { jni::objects::JByteArray::from_raw(data) };
-    let bytes = match env.convert_byte_array(&array) {
-        Ok(b) => b,
-        Err(_) => return std::ptr::null_mut(),
-    };
+    unowned_env
+        .with_env(|env| -> jni::errors::Result<jstring> {
+            let array = unsafe { jni::objects::JByteArray::from_raw(env, data) };
+            let bytes = env.convert_byte_array(&array)?;
 
-    match crate::tbf::decode_to_tauq(&bytes) {
-        Ok(tauq_str) => match env.new_string(tauq_str) {
-            Ok(js) => js.into_raw(),
-            Err(_) => std::ptr::null_mut(),
-        },
-        Err(e) => {
-            let _ = env.throw_new(
-                "java/lang/IllegalArgumentException",
-                format!("TBF Decode Error: {}", e),
-            );
-            std::ptr::null_mut()
-        }
-    }
+            match crate::tbf::decode_to_tauq(&bytes) {
+                Ok(tauq_str) => Ok(env.new_string(tauq_str)?.into_raw()),
+                Err(e) => {
+                    let _ = env.throw_new(
+                        jni_str!("java/lang/IllegalArgumentException"),
+                        JNIString::new(format!("TBF Decode Error: {}", e)),
+                    );
+                    Ok(std::ptr::null_mut())
+                }
+            }
+        })
+        .resolve::<ThrowRuntimeExAndDefault>()
 }
