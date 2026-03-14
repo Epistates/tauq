@@ -5,7 +5,7 @@ use tauq::{compile_tauq, compile_tauqq, format_to_tauq, minify_tauq_str};
 pub fn parse(input: &str) -> Result<JsValue, JsValue> {
     let json_val = compile_tauq(input)
         .map_err(|e| JsValue::from_str(&format!("Tauq Parse Error: {}", e)))?;
-        
+
     serde_wasm_bindgen::to_value(&json_val)
         .map_err(|e| JsValue::from_str(&format!("Serialization Error: {}", e)))
 }
@@ -14,7 +14,7 @@ pub fn parse(input: &str) -> Result<JsValue, JsValue> {
 pub fn exec(input: &str, safe_mode: bool) -> Result<JsValue, JsValue> {
     let json_val = compile_tauqq(input, safe_mode)
         .map_err(|e| JsValue::from_str(&format!("Tauq Query Error: {}", e)))?;
-        
+
     serde_wasm_bindgen::to_value(&json_val)
         .map_err(|e| JsValue::from_str(&format!("Serialization Error: {}", e)))
 }
@@ -23,7 +23,7 @@ pub fn exec(input: &str, safe_mode: bool) -> Result<JsValue, JsValue> {
 pub fn minify(input: &str) -> Result<String, JsValue> {
     let json_val = compile_tauq(input)
         .map_err(|e| JsValue::from_str(&format!("Tauq Parse Error: {}", e)))?;
-        
+
     Ok(minify_tauq_str(&json_val))
 }
 
@@ -31,7 +31,7 @@ pub fn minify(input: &str) -> Result<String, JsValue> {
 pub fn stringify(value: JsValue) -> Result<String, JsValue> {
     let json_val: serde_json::Value = serde_wasm_bindgen::from_value(value)
         .map_err(|e| JsValue::from_str(&format!("Invalid JS Value: {}", e)))?;
-        
+
     Ok(format_to_tauq(&json_val))
 }
 
@@ -39,14 +39,13 @@ pub fn stringify(value: JsValue) -> Result<String, JsValue> {
 pub fn to_json(input: &str) -> Result<String, JsValue> {
     let json_val = compile_tauq(input)
         .map_err(|e| JsValue::from_str(&format!("Tauq Parse Error: {}", e)))?;
-    
+
     serde_json::to_string(&json_val)
         .map_err(|e| JsValue::from_str(&format!("JSON Serialize Error: {}", e)))
 }
 
 #[wasm_bindgen]
 pub fn to_tbf(input: &str) -> Result<Box<[u8]>, JsValue> {
-    // Auto-detect
     let json_val = if input.trim_start().starts_with('{') || input.trim_start().starts_with('[') {
         serde_json::from_str(input).map_err(|e| JsValue::from_str(&format!("JSON Parse Error: {}", e)))?
     } else {
@@ -55,7 +54,7 @@ pub fn to_tbf(input: &str) -> Result<Box<[u8]>, JsValue> {
 
     let bytes = tauq::tbf::encode_json(&json_val)
         .map_err(|e| JsValue::from_str(&format!("TBF Encode Error: {}", e)))?;
-        
+
     Ok(bytes.into_boxed_slice())
 }
 
@@ -63,7 +62,7 @@ pub fn to_tbf(input: &str) -> Result<Box<[u8]>, JsValue> {
 pub fn from_tbf(data: &[u8]) -> Result<String, JsValue> {
     let json_val = tauq::tbf::decode(data)
         .map_err(|e| JsValue::from_str(&format!("TBF Decode Error: {}", e)))?;
-        
+
     serde_json::to_string(&json_val)
         .map_err(|e| JsValue::from_str(&format!("JSON Serialize Error: {}", e)))
 }
@@ -74,36 +73,19 @@ pub fn tbf_to_tauq(data: &[u8]) -> Result<String, JsValue> {
         .map_err(|e| JsValue::from_str(&format!("TBF Decode Error: {}", e)))
 }
 
+/// Parse a complete tauq string with streaming parser (one record at a time).
+/// Returns all records as a JSON array string.
 #[wasm_bindgen]
-pub struct TauqStream {
-    parser: tauq::streaming::StreamingParser,
-}
+pub fn parse_streaming(input: &str) -> Result<JsValue, JsValue> {
+    let mut parser = tauq::StreamingParser::new(input);
+    let mut records = Vec::new();
 
-#[wasm_bindgen]
-impl TauqStream {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        Self {
-            parser: tauq::streaming::StreamingParser::new(),
-        }
+    while let Some(result) = parser.next_record() {
+        let val = result.map_err(|e| JsValue::from_str(&format!("Stream Parse Error: {}", e)))?;
+        records.push(val);
     }
 
-    pub fn push(&mut self, chunk: &str) -> Result<js_sys::Array, JsValue> {
-        let results = js_sys::Array::new();
-        self.parser.push(chunk);
-        
-        while let Some(val) = self.parser.next_value().map_err(|e| JsValue::from_str(&format!("Stream Yield Error: {}", e)))? {
-            results.push(&serde_wasm_bindgen::to_value(&val).map_err(|e| JsValue::from_str(&format!("Serialization Error: {}", e)))?);
-        }
-        
-        Ok(results)
-    }
-
-    pub fn finish(&mut self) -> Result<js_sys::Array, JsValue> {
-        let results = js_sys::Array::new();
-        while let Some(val) = self.parser.next_value().map_err(|e| JsValue::from_str(&format!("Stream Yield Error: {}", e)))? {
-            results.push(&serde_wasm_bindgen::to_value(&val).map_err(|e| JsValue::from_str(&format!("Serialization Error: {}", e)))?);
-        }
-        Ok(results)
-    }
+    let array = serde_json::Value::Array(records);
+    serde_wasm_bindgen::to_value(&array)
+        .map_err(|e| JsValue::from_str(&format!("Serialization Error: {}", e)))
 }
