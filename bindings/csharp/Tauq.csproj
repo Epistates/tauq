@@ -5,10 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Title>Tauq</Title>
-    <Description>Token-efficient data notation - 44% fewer tokens than JSON.</Description>
+    <Description>Token-efficient data notation - 49% fewer tokens than JSON.</Description>
     <PackageProjectUrl>https://github.com/epistates/tauq</PackageProjectUrl>
     <RepositoryUrl>https://github.com/epistates/tauq</RepositoryUrl>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
   </PropertyGroup>
 
 </Project>

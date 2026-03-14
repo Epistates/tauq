@@ -4,7 +4,7 @@
   <groupId>org.tauq</groupId>
   <artifactId>tauq-java</artifactId>
   <packaging>jar</packaging>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <name>tauq-java</name>
   <url>https://github.com/epistates/tauq</url>
   <properties>
