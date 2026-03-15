@@ -24,3 +24,5 @@ benchmarks/outputs/*.toon
 .vscode/
 .idea/
 *.code-workspace
+
+outputs
