@@ -449,15 +449,13 @@ impl TauqStream {
         let parser = crate::tauq::streaming::StreamingParser::new(source);
 
         let list = pyo3::types::PyList::empty(py);
-        let mut record_count: usize = 0;
 
-        for result in parser {
+        for (record_count, result) in parser.enumerate() {
             let val =
                 result.map_err(|e| PyValueError::new_err(format!("Stream parse error: {}", e)))?;
             if record_count >= self.consumed {
                 list.append(json_to_python(py, &val)?)?;
             }
-            record_count += 1;
         }
 
         // Reset for potential reuse.
@@ -476,6 +474,7 @@ fn tauq(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(loads, m)?)?;
     m.add_function(wrap_pyfunction!(load, m)?)?;
     m.add_function(wrap_pyfunction!(exec_tauqq, m)?)?;
+    #[allow(clippy::unsafe_removed_from_name)]
     m.add_function(wrap_pyfunction!(exec_tauqq_unsafe, m)?)?;
     m.add_function(wrap_pyfunction!(dumps, m)?)?;
     m.add_function(wrap_pyfunction!(minify, m)?)?;
