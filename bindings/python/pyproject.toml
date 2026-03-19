@@ -10,9 +10,9 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-description = "Tauq parser for Python - JSON for the AI Era (44% fewer tokens than JSON)"
+description = "Tauq parser for Python - JSON for the AI Era (49% fewer tokens than JSON)"
 readme = "README.md"
-version = "0.1.0"
+version = "0.2.0"
 
 [tool.maturin]
 features = ["python-bindings"]
