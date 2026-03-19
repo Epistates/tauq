@@ -23,6 +23,7 @@ jobs:
 
     - name: Smoke Test Fuzz Targets
       run: |
-        # Run each target for 10 seconds to ensure they build and don't immediately crash
-        cargo fuzz run fuzz_parser -- -max_total_time=10
-        cargo fuzz run fuzz_tbf -- -max_total_time=10
+        # Run each target for 10 seconds to ensure they build and don't immediately crash.
+        # -timeout=30 caps any single test case to 30s so a slow input can't block the run.
+        cargo fuzz run fuzz_parser -- -max_total_time=10 -timeout=30
+        cargo fuzz run fuzz_tbf -- -max_total_time=10 -timeout=30
