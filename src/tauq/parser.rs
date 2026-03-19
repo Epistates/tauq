@@ -182,6 +182,11 @@ impl<'a> Parser<'a> {
                         }
                         if let Some(row) = self.parse_row()? {
                             result.push(row);
+                        } else {
+                            // parse_row() returned None without consuming tokens
+                            // (e.g., empty schema with no fields). Advance to prevent
+                            // an infinite loop.
+                            self.advance();
                         }
                     } else {
                         // Try to parse as map entry
@@ -742,6 +747,10 @@ impl<'a> Parser<'a> {
                             self.active_shape = Some(shape_name.clone());
                             if let Some(row) = self.parse_row()? {
                                 list.push(row);
+                            } else {
+                                // Empty schema or unparseable token — advance to
+                                // prevent an infinite loop.
+                                self.advance();
                             }
                             // Don't clear active_shape - subsequent rows use same schema
                         } else if let Some(val) = self.parse_value()? {

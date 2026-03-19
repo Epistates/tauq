@@ -9,6 +9,9 @@ use super::token::{Location, SpannedToken, Token};
 use crate::error::{ParseError, Span};
 use serde_json::{Map, Value};
 
+/// Maximum nesting depth to prevent stack overflow from deeply nested structures
+const MAX_NESTING_DEPTH: usize = 100;
+
 /// Streaming parser that yields records one at a time.
 ///
 /// # Example
@@ -33,6 +36,7 @@ pub struct StreamingParser<'a> {
     active_shape: Option<String>,
     pending_kv: Map<String, Value>,
     finished: bool,
+    nesting_depth: usize,
 }
 
 impl<'a> StreamingParser<'a> {
@@ -49,6 +53,7 @@ impl<'a> StreamingParser<'a> {
             active_shape: None,
             pending_kv: Map::new(),
             finished: false,
+            nesting_depth: 0,
         }
     }
 
@@ -125,7 +130,12 @@ impl<'a> StreamingParser<'a> {
 
                         match self.parse_row() {
                             Ok(Some(row)) => return Some(Ok(row)),
-                            Ok(None) => continue,
+                            Ok(None) => {
+                                // parse_row() returned None without consuming
+                                // tokens (e.g., empty schema). Advance to
+                                // prevent an infinite loop.
+                                self.advance();
+                            }
                             Err(e) => return Some(Err(e)),
                         }
                     } else {
@@ -368,6 +378,14 @@ impl<'a> StreamingParser<'a> {
     }
 
     fn parse_array(&mut self) -> Result<Value, ParseError> {
+        if self.nesting_depth >= MAX_NESTING_DEPTH {
+            return Err(self.make_error(format!(
+                "Maximum nesting depth ({}) exceeded - structure too deeply nested",
+                MAX_NESTING_DEPTH
+            )));
+        }
+        self.nesting_depth += 1;
+
         self.advance(); // Skip [
         let mut arr = Vec::new();
 
@@ -382,6 +400,7 @@ impl<'a> StreamingParser<'a> {
                     continue;
                 }
             } else {
+                self.nesting_depth -= 1;
                 return Err(self.make_error("Unterminated array"));
             }
 
@@ -389,10 +408,19 @@ impl<'a> StreamingParser<'a> {
             arr.push(value);
         }
 
+        self.nesting_depth -= 1;
         Ok(Value::Array(arr))
     }
 
     fn parse_object(&mut self) -> Result<Value, ParseError> {
+        if self.nesting_depth >= MAX_NESTING_DEPTH {
+            return Err(self.make_error(format!(
+                "Maximum nesting depth ({}) exceeded - structure too deeply nested",
+                MAX_NESTING_DEPTH
+            )));
+        }
+        self.nesting_depth += 1;
+
         self.advance(); // Skip {
         let mut obj = Map::new();
 
@@ -407,6 +435,7 @@ impl<'a> StreamingParser<'a> {
                     continue;
                 }
             } else {
+                self.nesting_depth -= 1;
                 return Err(self.make_error("Unterminated object"));
             }
 
@@ -433,6 +462,7 @@ impl<'a> StreamingParser<'a> {
             obj.insert(key, value);
         }
 
+        self.nesting_depth -= 1;
         Ok(Value::Object(obj))
     }
 

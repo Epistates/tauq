@@ -125,6 +125,17 @@ mod edge_cases {
         }
     }
 
+    /// Regression: fuzzer-discovered input `!def,):!/!!,` caused an infinite
+    /// loop because `!def` created a schema with zero fields, and `parse_row()`
+    /// returned `None` without consuming any tokens.
+    #[test]
+    fn test_fuzz_timeout_empty_schema_no_hang() {
+        // The exact bytes from the fuzzer: [33,100,101,102,44,41,58,33,47,33,33,44]
+        let input = "!def,):!/!!,";
+        // Must terminate (not hang) regardless of whether it succeeds or errors.
+        let _ = compile_tauq(input);
+    }
+
     // -------------------------------------------------------------------------
     // Medium dataset via !def schema
     // -------------------------------------------------------------------------

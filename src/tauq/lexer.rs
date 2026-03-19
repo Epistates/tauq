@@ -66,42 +66,47 @@ impl<'a> Lexer<'a> {
 
     /// Get the next token from the input
     pub fn next_token(&mut self) -> Option<SpannedToken> {
-        self.skip_whitespace();
+        loop {
+            self.skip_whitespace();
 
-        let start = self.location();
-        let ch = self.advance()?;
+            let start = self.location();
+            let ch = self.advance()?;
 
-        let token = match ch {
-            '!' => self.lex_directive(),
-            ':' => Token::Colon,
-            ';' => Token::Semi,
-            '\n' => Token::Newline,
-            '{' => Token::LBrace,
-            '}' => Token::RBrace,
-            '[' => Token::LBracket,
-            ']' => Token::RBracket,
-            ',' => return self.next_token(), // Treat comma as whitespace/separator
-            '#' => {
-                self.skip_comment();
-                return self.next_token();
-            }
-            '"' => self.lex_string(),
-            '-' => {
-                // Check for ---
-                let mut lookahead = self.chars.clone();
-                if lookahead.next() == Some('-') && lookahead.next() == Some('-') {
-                    self.advance(); // consume 2nd -
-                    self.advance(); // consume 3rd -
-                    Token::TripleDash
-                } else {
-                    self.lex_bareword(ch)
+            let token = match ch {
+                // Commas and comments are skipped iteratively to avoid
+                // stack overflow on adversarial input (e.g. thousands of
+                // consecutive commas).
+                ',' => continue,
+                '#' => {
+                    self.skip_comment();
+                    continue;
                 }
-            }
-            _ => self.lex_bareword(ch),
-        };
+                '!' => self.lex_directive(),
+                ':' => Token::Colon,
+                ';' => Token::Semi,
+                '\n' => Token::Newline,
+                '{' => Token::LBrace,
+                '}' => Token::RBrace,
+                '[' => Token::LBracket,
+                ']' => Token::RBracket,
+                '"' => self.lex_string(),
+                '-' => {
+                    // Check for ---
+                    let mut lookahead = self.chars.clone();
+                    if lookahead.next() == Some('-') && lookahead.next() == Some('-') {
+                        self.advance(); // consume 2nd -
+                        self.advance(); // consume 3rd -
+                        Token::TripleDash
+                    } else {
+                        self.lex_bareword(ch)
+                    }
+                }
+                _ => self.lex_bareword(ch),
+            };
 
-        let end = self.location();
-        Some(SpannedToken { token, start, end })
+            let end = self.location();
+            return Some(SpannedToken { token, start, end });
+        }
     }
 
     fn skip_whitespace(&mut self) {
